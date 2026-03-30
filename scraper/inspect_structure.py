@@ -18,7 +18,7 @@ import time
 import textwrap
 from pathlib import Path
 
-import requests
+from curl_cffi import requests  # avoids TLS fingerprint blocking
 from bs4 import BeautifulSoup, Tag
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -49,7 +49,7 @@ OUT_DIR.mkdir(exist_ok=True)
 
 def fetch(url: str) -> str:
     print(f"  GET {url}")
-    resp = requests.get(url, headers=HEADERS, timeout=20)
+    resp = requests.get(url, impersonate="chrome124", timeout=20)
     resp.raise_for_status()
     return resp.text
 

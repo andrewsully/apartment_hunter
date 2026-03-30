@@ -34,7 +34,8 @@ import re
 import json
 import time
 import logging
-import requests
+import requests                          # used only for Nominatim geocoding
+from curl_cffi import requests as cffi  # used for Metro Realty (bypasses TLS fingerprinting)
 from pathlib import Path
 from datetime import datetime
 from urllib.parse import urljoin, urlparse
@@ -56,34 +57,24 @@ SEARCH_URL = (
     "&sort_name=rent&sort_dir=asc"
 )
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Connection": "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Cache-Control": "max-age=0",
-}
-
 IMAGE_DIR = Path(__file__).parent.parent / "static" / "images" / "apartments"
 IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 REQUEST_DELAY = 3.0   # seconds between page requests
 GEOCODE_DELAY = 1.2   # seconds between geocoding requests (Nominatim policy: 1/sec)
 
+# Used only for Nominatim geocoding (standard requests, not curl_cffi)
+GEOCODE_HEADERS = {
+    "User-Agent": "apartment-hunter/1.0 (github.com/andrewsully/apartment_hunter)",
+    "Referer": "https://github.com/andrewsully/apartment_hunter",
+}
 
-# ── HTTP session (reuse connection, share cookies) ─────────────────────────────
 
-session = requests.Session()
-session.headers.update(HEADERS)
+# ── HTTP session — impersonates Chrome TLS fingerprint ────────────────────────
+# curl_cffi uses curl's actual TLS stack so WAFs can't distinguish it from
+# a real browser, unlike the standard `requests` library.
+
+session = cffi.Session(impersonate="chrome124")
 
 
 def fetch(url: str, retries: int = 2) -> str:
@@ -93,15 +84,15 @@ def fetch(url: str, retries: int = 2) -> str:
             resp = session.get(url, timeout=20)
             if resp.status_code == 429:
                 wait = int(resp.headers.get("Retry-After", 15))
-                logger.warning("Rate limited — waiting %ds", wait)
+                logger.warning("Rate limited — waiting %ds before retry %d/%d", wait, attempt + 1, retries)
                 time.sleep(wait)
                 continue
             resp.raise_for_status()
             return resp.text
-        except requests.RequestException as e:
+        except Exception as e:
             if attempt == retries:
                 raise
-            logger.warning("Fetch failed (%s), retrying…", e)
+            logger.warning("Fetch failed (%s), retrying in 5s…", e)
             time.sleep(5)
     return ""
 
@@ -129,13 +120,9 @@ def geocode_address(address: str) -> tuple:
     """Geocode via OpenStreetMap Nominatim (free, ~1 req/sec limit)."""
     url = "https://nominatim.openstreetmap.org/search"
     params = {"q": address, "format": "json", "limit": 1, "countrycodes": "us"}
-    headers = {
-        **HEADERS,
-        "Referer": "https://github.com/andrewsully/apartment_hunter",
-    }
     try:
         time.sleep(GEOCODE_DELAY)
-        resp = requests.get(url, params=params, headers=headers, timeout=10)
+        resp = requests.get(url, params=params, headers=GEOCODE_HEADERS, timeout=10)
         resp.raise_for_status()
         results = resp.json()
         if results:
@@ -151,7 +138,7 @@ def download_image(image_url: str, source_id: str, idx: int) -> str | None:
     """Download one image and save locally. Returns the web-accessible path."""
     try:
         time.sleep(1.0)
-        resp = session.get(image_url, timeout=15, stream=True)
+        resp = session.get(image_url, timeout=15)
         resp.raise_for_status()
         ext = image_url.split(".")[-1].split("?")[0].lower()
         if ext not in ("jpg", "jpeg", "png", "webp"):
@@ -159,8 +146,7 @@ def download_image(image_url: str, source_id: str, idx: int) -> str | None:
         filename = f"{source_id}_{idx}.{ext}"
         path = IMAGE_DIR / filename
         with open(path, "wb") as f:
-            for chunk in resp.iter_content(8192):
-                f.write(chunk)
+            f.write(resp.content)
         logger.debug("Saved image: %s", filename)
         return f"/images/apartments/{filename}"
     except Exception as e:
