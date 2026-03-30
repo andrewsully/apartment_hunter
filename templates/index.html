@@ -5,11 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Apartment Hunter — Boston</title>
 
-  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
@@ -17,400 +14,277 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:       #0f1117;
-      --surface:  #1a1d27;
-      --surface2: #22263a;
-      --border:   #2a2d3a;
-      --accent:   #6366f1;
-      --accent2:  #22d3ee;
-      --success:  #22c55e;
-      --warn:     #f59e0b;
-      --danger:   #ef4444;
-      --text:     #e2e8f0;
-      --muted:    #64748b;
-      --sidebar:  340px;
+      --bg:      #0f1117;
+      --surf:    #1a1d27;
+      --surf2:   #22263a;
+      --border:  #2a2d3a;
+      --accent:  #6366f1;
+      --cyan:    #22d3ee;
+      --green:   #22c55e;
+      --amber:   #f59e0b;
+      --red:     #ef4444;
+      --text:    #e2e8f0;
+      --muted:   #64748b;
+      --sidebar: 340px;
     }
 
     html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
-
-    /* ── Layout ── */
     #app { display: flex; height: 100vh; flex-direction: column; }
 
     /* ── Top bar ── */
     #topbar {
-      height: 52px;
-      min-height: 52px;
-      background: var(--surface);
+      height: 52px; min-height: 52px;
+      background: var(--surf);
       border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      padding: 0 20px;
-      gap: 16px;
-      z-index: 100;
+      display: flex; align-items: center;
+      padding: 0 16px; gap: 12px; z-index: 100;
     }
-
-    .app-logo {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text);
-      letter-spacing: -0.3px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .topbar-divider { width: 1px; height: 20px; background: var(--border); }
-
-    .topbar-stat {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12.5px;
-      color: var(--muted);
-    }
-    .topbar-stat strong { color: var(--text); font-weight: 600; }
-
-    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-
-    /* Filter chips */
-    .filter-group { display: flex; align-items: center; gap: 6px; }
-    .filter-label { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+    .logo { font-size: 14px; font-weight: 700; white-space: nowrap; }
+    .divider { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+    .stat { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .stat strong { color: var(--text); font-weight: 600; }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 
     .chip {
-      padding: 4px 10px;
-      border-radius: 99px;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--muted);
-      transition: all 0.15s;
+      padding: 4px 11px; border-radius: 99px; font-size: 12px; font-weight: 500;
+      cursor: pointer; border: 1px solid var(--border); background: transparent;
+      color: var(--muted); transition: all 0.15s; white-space: nowrap;
     }
     .chip:hover { border-color: var(--accent); color: var(--text); }
     .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .chip.active-green  { background: rgba(34,197,94,0.15);  border-color: var(--green);  color: var(--green); }
+    .chip.active-amber  { background: rgba(245,158,11,0.15); border-color: var(--amber);  color: var(--amber); }
+    .chip.active-red    { background: rgba(239,68,68,0.1);   border-color: var(--red);    color: var(--red); }
+    .chip.boundary-on   { background: rgba(99,102,241,0.15); border-color: var(--accent); color: var(--accent); }
+    .filter-sep { width: 1px; height: 16px; background: var(--border); }
 
     /* ── Body ── */
     #body { display: flex; flex: 1; overflow: hidden; }
 
     /* ── Sidebar ── */
     #sidebar {
-      width: var(--sidebar);
-      min-width: var(--sidebar);
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+      width: var(--sidebar); min-width: var(--sidebar);
+      background: var(--surf); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
     }
-
     #sidebar-header {
-      padding: 14px 16px 12px;
+      padding: 12px 14px 10px;
       border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
     }
-
-    #apt-count-label {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-    }
-
+    #apt-count-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
     #sort-select {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-size: 11px;
-      padding: 4px 8px;
-      border-radius: 6px;
-      cursor: pointer;
+      background: var(--bg); border: 1px solid var(--border); color: var(--text);
+      font-size: 11px; padding: 4px 8px; border-radius: 6px; cursor: pointer;
     }
-
-    #apt-list {
-      flex: 1;
-      overflow-y: auto;
-      scrollbar-width: thin;
-    }
-
-    /* ── Empty state ── */
-    #empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      padding: 32px 24px;
-      text-align: center;
-      gap: 12px;
-    }
-
-    .empty-icon {
-      width: 56px; height: 56px;
-      border-radius: 16px;
-      background: var(--surface2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      margin-bottom: 4px;
-    }
-
-    .empty-title { font-size: 15px; font-weight: 600; color: var(--text); }
-    .empty-sub   { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
-
-    .btn-outline {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 12.5px;
-      font-weight: 600;
-      cursor: pointer;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--text);
-      text-decoration: none;
-      margin-top: 4px;
-      transition: all 0.15s;
-    }
-    .btn-outline:hover { border-color: var(--accent); background: rgba(99,102,241,0.08); }
+    #apt-list { flex: 1; overflow-y: auto; scrollbar-width: thin; }
 
     /* ── Apartment card ── */
     .apt-card {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
-      cursor: pointer;
-      transition: background 0.12s;
-      display: flex;
-      gap: 12px;
+      padding: 12px 14px; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background 0.12s;
+      display: flex; gap: 11px; position: relative;
     }
-    .apt-card:hover { background: var(--surface2); }
-    .apt-card.active { background: rgba(99,102,241,0.1); border-left: 3px solid var(--accent); }
+    .apt-card:hover  { background: var(--surf2); }
+    .apt-card.active { background: rgba(99,102,241,0.1); }
+    .apt-card.active::before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+      width: 3px; background: var(--accent); border-radius: 0 2px 2px 0;
+    }
+
+    /* Boundary indicator stripe */
+    .apt-card.outside::after {
+      content: ""; position: absolute; right: 0; top: 0; bottom: 0;
+      width: 3px; background: var(--border); border-radius: 2px 0 0 2px;
+      opacity: 0.6;
+    }
 
     .apt-thumb {
-      width: 72px; height: 56px;
-      min-width: 72px;
-      border-radius: 6px;
-      object-fit: cover;
-      background: var(--surface2);
+      width: 72px; height: 60px; min-width: 72px;
+      border-radius: 7px; object-fit: cover; background: var(--surf2);
     }
-    .apt-thumb-placeholder {
-      width: 72px; height: 56px;
-      min-width: 72px;
-      border-radius: 6px;
-      background: var(--surface2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      color: var(--border);
+    .apt-thumb-ph {
+      width: 72px; height: 60px; min-width: 72px;
+      border-radius: 7px; background: var(--surf2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; color: var(--border);
     }
-
     .apt-info { flex: 1; min-width: 0; }
-    .apt-address { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .apt-details { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
-    .apt-rent { font-size: 15px; font-weight: 700; color: var(--accent2); margin-top: 4px; }
-    .apt-tags { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+    .apt-top { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+    .apt-rent { font-size: 14px; font-weight: 700; color: var(--cyan); white-space: nowrap; }
+    .apt-address { font-size: 12.5px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    .apt-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .apt-tags { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
     .tag {
-      font-size: 10px;
-      font-weight: 600;
-      padding: 2px 7px;
-      border-radius: 99px;
-      background: var(--surface2);
-      color: var(--muted);
-      border: 1px solid var(--border);
+      font-size: 10px; font-weight: 600; padding: 2px 6px;
+      border-radius: 99px; border: 1px solid var(--border);
+      background: var(--surf2); color: var(--muted);
     }
-    .tag.no-fee { color: var(--success); border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.08); }
-
-    /* ── Category badge on card ── */
-    .cat-badge {
-      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 99px;
+    .tag.nofee  { color: var(--green); border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.06); }
+    .tag.inside { color: var(--accent); border-color: rgba(99,102,241,0.3); background: rgba(99,102,241,0.06); }
+    .tag.outside-tag { color: var(--muted); border-color: var(--border); }
+    .cat-pill {
+      font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 99px;
       text-transform: uppercase; letter-spacing: 0.4px;
     }
-    .cat-yes    { background: rgba(34,197,94,0.15); color: var(--success); border: 1px solid rgba(34,197,94,0.3); }
-    .cat-maybe  { background: rgba(245,158,11,0.15); color: var(--warn); border: 1px solid rgba(245,158,11,0.3); }
-    .cat-no     { background: rgba(239,68,68,0.1); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
+    .cat-pill.yes   { color: var(--green); border: 1px solid rgba(34,197,94,0.3);  background: rgba(34,197,94,0.1); }
+    .cat-pill.maybe { color: var(--amber); border: 1px solid rgba(245,158,11,0.3); background: rgba(245,158,11,0.1); }
+    .cat-pill.no    { color: var(--red);   border: 1px solid rgba(239,68,68,0.2);  background: rgba(239,68,68,0.07); }
 
     /* ── Map ── */
-    #map { flex: 1; }
+    #map-wrap { flex: 1; position: relative; }
+    #map { width: 100%; height: 100%; }
+
+    /* ── Empty state ── */
+    .empty {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 100%; padding: 32px 20px; text-align: center; gap: 10px;
+    }
+    .empty-icon { font-size: 32px; margin-bottom: 4px; }
+    .empty-title { font-size: 14px; font-weight: 600; }
+    .empty-sub   { font-size: 12px; color: var(--muted); line-height: 1.6; }
 
     /* ── Detail drawer ── */
-    #detail-drawer {
-      position: fixed;
-      bottom: 0; right: 0;
-      width: 420px;
-      max-height: 70vh;
-      background: var(--surface);
+    #drawer {
+      position: fixed; bottom: 0; right: 0;
+      width: 440px; max-height: 75vh;
+      background: var(--surf);
       border-top: 1px solid var(--border);
       border-left: 1px solid var(--border);
-      border-radius: 16px 0 0 0;
-      z-index: 500;
-      transform: translateY(100%);
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      overflow-y: auto;
-      scrollbar-width: thin;
+      border-radius: 14px 0 0 0;
+      z-index: 600;
+      transform: translateY(calc(100% + 1px));
+      transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex; flex-direction: column;
     }
-    #detail-drawer.open { transform: translateY(0); }
+    #drawer.open { transform: translateY(0); }
 
-    .drawer-header {
-      padding: 16px 20px 12px;
+    .drawer-head {
+      padding: 14px 18px 12px;
       border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      position: sticky;
-      top: 0;
-      background: var(--surface);
-      z-index: 1;
+      display: flex; align-items: flex-start; gap: 10px;
+      position: sticky; top: 0; background: var(--surf); z-index: 1; flex-shrink: 0;
     }
-
+    .drawer-head-info { flex: 1; min-width: 0; }
+    .drawer-addr { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .drawer-sub  { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
     .drawer-close {
-      margin-left: auto;
-      background: none;
-      border: none;
-      color: var(--muted);
-      cursor: pointer;
-      padding: 4px;
-      border-radius: 4px;
-      font-size: 18px;
-      line-height: 1;
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      padding: 4px 6px; border-radius: 5px; font-size: 16px; line-height: 1; flex-shrink: 0;
     }
-    .drawer-close:hover { color: var(--text); }
+    .drawer-close:hover { background: var(--surf2); color: var(--text); }
 
-    .drawer-body { padding: 16px 20px 24px; }
+    .drawer-body { overflow-y: auto; padding: 14px 18px 24px; scrollbar-width: thin; }
 
-    /* Image carousel */
-    #drawer-images {
-      display: flex;
-      gap: 8px;
-      overflow-x: auto;
-      scrollbar-width: none;
-      margin-bottom: 16px;
+    /* Image strip */
+    .img-strip-wrap { position: relative; margin-bottom: 14px; }
+    .img-strip {
+      display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none;
+      scroll-snap-type: x mandatory;
     }
-    #drawer-images img {
-      height: 140px;
-      min-width: 200px;
-      object-fit: cover;
-      border-radius: 8px;
-      border: 1px solid var(--border);
+    .img-strip::-webkit-scrollbar { display: none; }
+    .img-strip img {
+      height: 150px; min-width: 220px; max-width: 220px;
+      object-fit: cover; border-radius: 8px;
+      border: 1px solid var(--border); flex-shrink: 0;
+      scroll-snap-align: start;
+    }
+    .img-count {
+      position: absolute; bottom: 8px; right: 8px;
+      background: rgba(0,0,0,0.65); color: #fff;
+      font-size: 10px; font-weight: 600; padding: 2px 7px;
+      border-radius: 99px; pointer-events: none;
+    }
+    .no-photos {
+      height: 90px; border-radius: 8px; background: var(--surf2);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 12px; margin-bottom: 14px;
     }
 
-    /* Detail stat row */
-    .stat-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-bottom: 16px;
-    }
+    /* Stat grid */
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 14px; }
     .stat-cell {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 12px;
-      text-align: center;
+      background: var(--surf2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 9px 6px; text-align: center;
     }
-    .stat-val { font-size: 18px; font-weight: 700; color: var(--text); }
-    .stat-key { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+    .stat-val { font-size: 17px; font-weight: 700; }
+    .stat-key { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+    /* Availability row */
+    .avail-row {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: var(--muted);
+      background: var(--surf2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 12px; margin-bottom: 14px;
+    }
+    .avail-row strong { color: var(--text); }
 
     /* Category buttons */
-    .cat-buttons { display: flex; gap: 8px; margin-bottom: 16px; }
+    .cat-row { display: flex; gap: 7px; margin-bottom: 14px; }
     .cat-btn {
-      flex: 1;
-      padding: 8px 10px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--muted);
+      flex: 1; padding: 8px 6px; border-radius: 8px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      border: 1px solid var(--border); background: transparent; color: var(--muted);
       transition: all 0.15s;
     }
     .cat-btn:hover { border-color: currentColor; }
-    .cat-btn.yes   { color: var(--success); }
-    .cat-btn.maybe { color: var(--warn); }
-    .cat-btn.no    { color: var(--danger); }
-    .cat-btn.active-yes   { background: rgba(34,197,94,0.15);  border-color: var(--success); color: var(--success); }
-    .cat-btn.active-maybe { background: rgba(245,158,11,0.15); border-color: var(--warn);    color: var(--warn); }
-    .cat-btn.active-no    { background: rgba(239,68,68,0.1);   border-color: var(--danger);  color: var(--danger); }
+    .cat-btn.yes   { color: var(--green); }
+    .cat-btn.maybe { color: var(--amber); }
+    .cat-btn.no    { color: var(--red); }
+    .cat-btn.on-yes   { background: rgba(34,197,94,0.12);  border-color: var(--green);  color: var(--green); }
+    .cat-btn.on-maybe { background: rgba(245,158,11,0.12); border-color: var(--amber);  color: var(--amber); }
+    .cat-btn.on-no    { background: rgba(239,68,68,0.08);  border-color: var(--red);    color: var(--red); }
 
     /* Notes */
-    .notes-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-    #drawer-notes {
-      width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 8px;
-      padding: 10px 12px;
-      font-size: 13px;
-      font-family: inherit;
-      resize: vertical;
-      min-height: 72px;
+    .section-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+    #notes-ta {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); border-radius: 8px; padding: 9px 11px;
+      font-size: 12.5px; font-family: inherit; resize: vertical; min-height: 68px;
     }
-    #drawer-notes:focus { outline: none; border-color: var(--accent); }
-
-    .btn-save-notes {
-      margin-top: 8px;
-      padding: 7px 14px;
-      border-radius: 7px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      background: var(--accent);
-      color: #fff;
+    #notes-ta:focus { outline: none; border-color: var(--accent); }
+    .notes-footer { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+    #notes-save-btn {
+      padding: 6px 14px; border-radius: 7px; font-size: 12px; font-weight: 600;
+      cursor: pointer; border: none; background: var(--accent); color: #fff;
       transition: background 0.15s;
     }
-    .btn-save-notes:hover { background: #4f52e8; }
+    #notes-save-btn:hover { background: #4f52e8; }
+    #notes-feedback { font-size: 11px; color: var(--green); opacity: 0; transition: opacity 0.3s; }
+    #notes-feedback.show { opacity: 1; }
 
-    /* ── Setup banner (shown when no apartments) ── */
-    #setup-banner {
-      position: absolute;
-      top: 60px; left: 50%;
-      transform: translateX(-50%);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 14px 20px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      z-index: 200;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-      font-size: 13px;
-      white-space: nowrap;
-    }
+    /* Source link */
+    .source-link { display: block; margin-top: 14px; font-size: 12px; color: var(--accent); text-decoration: none; }
+    .source-link:hover { text-decoration: underline; }
 
-    /* ── Leaflet custom popup ── */
+    /* ── Leaflet overrides ── */
+    .leaflet-container { background: #1a1d27; }
+    .leaflet-bar a { background-color: #1a1d27 !important; color: #e2e8f0 !important; border-color: #2a2d3a !important; }
+    .leaflet-bar a:hover { background-color: #2a2d3a !important; }
     .leaflet-popup-content-wrapper {
-      background: var(--surface);
-      color: var(--text);
-      border: 1px solid var(--border);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      background: var(--surf); color: var(--text);
+      border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.5);
       border-radius: 10px;
     }
-    .leaflet-popup-tip { background: var(--surface); }
-    .leaflet-popup-content { margin: 12px 14px; font-family: 'Inter', sans-serif; font-size: 13px; }
+    .leaflet-popup-tip { background: var(--surf); }
+    .leaflet-popup-content { margin: 11px 14px; font-family: 'Inter', sans-serif; font-size: 12px; line-height: 1.5; }
 
-    /* Scrollbar */
+    /* ── Scrollbars ── */
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-    /* Leaflet dark */
-    .leaflet-container { background: #1a1d27; }
-    .leaflet-bar a {
-      background-color: #1a1d27 !important;
-      color: #e2e8f0 !important;
-      border-color: #2a2d3a !important;
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 20px; left: 50%;
+      transform: translateX(-50%) translateY(60px);
+      background: var(--surf); border: 1px solid var(--border);
+      border-radius: 8px; padding: 9px 16px;
+      font-size: 12.5px; font-weight: 500; z-index: 9999;
+      transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+      box-shadow: 0 6px 24px rgba(0,0,0,0.4); pointer-events: none;
     }
-    .leaflet-bar a:hover { background-color: #2a2d3a !important; }
+    #toast.show { transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 <body>
@@ -418,33 +292,27 @@
 
   <!-- ── Top bar ── -->
   <header id="topbar">
-    <div class="app-logo">
-      🏠 Apartment Hunter
-    </div>
-    <div class="topbar-divider"></div>
-    <div class="topbar-stat">
-      <strong id="stat-count">{{ total_apartments }}</strong> listings in boundary
-    </div>
-    {% if last_scraped %}
-    <div class="topbar-stat" style="margin-left:4px;">
-      · last updated <strong id="stat-updated">{{ last_scraped[:10] }}</strong>
-    </div>
-    {% endif %}
+    <div class="logo">🏠 Apartment Hunter</div>
+    <div class="divider"></div>
+    <div class="stat"><strong id="stat-showing">—</strong> shown</div>
+    <div class="stat" style="margin-left:-4px;">of <strong id="stat-total">—</strong> total</div>
 
     <div class="topbar-right">
-      <div class="filter-group">
-        <span class="filter-label">List</span>
-        <button class="chip active" data-filter="all">All</button>
-        <button class="chip" data-filter="yes">✓ Yes</button>
-        <button class="chip" data-filter="maybe">? Maybe</button>
-        <button class="chip" data-filter="no">✗ No</button>
-        <button class="chip" data-filter="unsorted">Unsorted</button>
-      </div>
+      <!-- Boundary toggle -->
+      <button class="chip boundary-on" id="boundary-chip" onclick="toggleBoundary()">📍 In Boundary</button>
+      <div class="filter-sep"></div>
+      <!-- Category filter -->
+      <span style="font-size:11px;color:var(--muted);font-weight:500;">LIST</span>
+      <button class="chip active" data-cat="all">All</button>
+      <button class="chip active-green" data-cat="yes" style="background:transparent;color:var(--muted);">✓ Yes</button>
+      <button class="chip active-amber" data-cat="maybe" style="background:transparent;color:var(--muted);">? Maybe</button>
+      <button class="chip active-red"   data-cat="no"    style="background:transparent;color:var(--muted);">✗ No</button>
+      <button class="chip" data-cat="unsorted">Unsorted</button>
     </div>
   </header>
 
   <div id="body">
-    <!-- ── Sidebar: apartment list ── -->
+    <!-- ── Sidebar ── -->
     <aside id="sidebar">
       <div id="sidebar-header">
         <span id="apt-count-label">Apartments</span>
@@ -455,330 +323,372 @@
           <option value="newest">Newest</option>
         </select>
       </div>
-      <div id="apt-list">
-        <!-- Populated by JS -->
-      </div>
+      <div id="apt-list"></div>
     </aside>
 
     <!-- ── Map ── -->
-    <div style="position:relative; flex:1;">
+    <div id="map-wrap">
       <div id="map"></div>
-
-      <!-- Setup banner (hidden once apartments exist) -->
-      <div id="setup-banner" {% if total_apartments > 0 %}style="display:none"{% endif %}>
-        <span style="font-size:20px;">👋</span>
-        <div>
-          <div style="font-weight:600; color:var(--text);">No apartments scraped yet</div>
-          <div style="color:var(--muted); font-size:12px; margin-top:2px;">Your search boundary is set. Ready to scrape when you are.</div>
-        </div>
-        <a href="/admin" class="btn-outline" style="margin-top:0;">Admin →</a>
-      </div>
     </div>
   </div>
 </div>
 
 <!-- ── Detail drawer ── -->
-<div id="detail-drawer">
-  <div class="drawer-header">
-    <div>
-      <div id="drawer-address" style="font-size:15px; font-weight:700;"></div>
-      <div id="drawer-neighborhood" style="font-size:12px; color:var(--muted); margin-top:2px;"></div>
+<div id="drawer">
+  <div class="drawer-head">
+    <div class="drawer-head-info">
+      <div class="drawer-addr" id="d-addr"></div>
+      <div class="drawer-sub"  id="d-sub"></div>
     </div>
-    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+    <button class="drawer-close" id="drawer-close-btn">✕</button>
   </div>
   <div class="drawer-body">
-    <div id="drawer-images"></div>
+    <div id="d-images-wrap"></div>
 
     <div class="stat-grid">
-      <div class="stat-cell">
-        <div class="stat-val" id="d-rent">—</div>
-        <div class="stat-key">/ month</div>
-      </div>
-      <div class="stat-cell">
-        <div class="stat-val" id="d-beds">—</div>
-        <div class="stat-key">bedrooms</div>
-      </div>
-      <div class="stat-cell">
-        <div class="stat-val" id="d-baths">—</div>
-        <div class="stat-key">bathrooms</div>
-      </div>
+      <div class="stat-cell"><div class="stat-val" id="d-rent">—</div><div class="stat-key">/ mo</div></div>
+      <div class="stat-cell"><div class="stat-val" id="d-beds">—</div><div class="stat-key">Beds</div></div>
+      <div class="stat-cell"><div class="stat-val" id="d-baths">—</div><div class="stat-key">Baths</div></div>
+      <div class="stat-cell"><div class="stat-val" id="d-sqft">—</div><div class="stat-key">Sq Ft</div></div>
     </div>
 
-    <div class="cat-buttons">
-      <button class="cat-btn yes"   onclick="setCategory('yes')"  >✓ Yes</button>
-      <button class="cat-btn maybe" onclick="setCategory('maybe')">? Maybe</button>
-      <button class="cat-btn no"    onclick="setCategory('no')"   >✗ No</button>
+    <div class="avail-row" id="d-avail-row">
+      <span>📅</span>
+      <span>Available: <strong id="d-avail">—</strong></span>
+      <span id="d-nofee-badge" style="display:none; margin-left:auto; font-size:11px; font-weight:600; color:var(--green);">No Fee</span>
     </div>
 
-    <div class="notes-label">Notes</div>
-    <textarea id="drawer-notes" placeholder="Add notes for your group…"></textarea>
-    <button class="btn-save-notes" onclick="saveNotes()">Save Notes</button>
-
-    <div style="margin-top:16px;">
-      <a id="drawer-source-link" href="#" target="_blank" style="font-size:12px; color:var(--accent); text-decoration:none;">View on Metro Realty →</a>
+    <div class="cat-row">
+      <button class="cat-btn yes"   data-cat="yes"  >✓ Yes</button>
+      <button class="cat-btn maybe" data-cat="maybe">? Maybe</button>
+      <button class="cat-btn no"    data-cat="no"   >✗ No</button>
     </div>
+
+    <div class="section-label">Notes for your group</div>
+    <textarea id="notes-ta" placeholder="Add notes visible to everyone…"></textarea>
+    <div class="notes-footer">
+      <button id="notes-save-btn">Save Notes</button>
+      <span id="notes-feedback">Saved ✓</span>
+    </div>
+
+    <a id="d-source-link" class="source-link" href="#" target="_blank">View on Metro Realty →</a>
   </div>
 </div>
 
+<div id="toast"></div>
+
 <script>
-  // ── Data injected by Flask ──
-  const BOUNDARY = {{ boundary | safe }};
+const BOUNDARY = {{ boundary | safe }};
 
-  // ── Map ──
-  const map = L.map("map", { zoomControl: true }).setView([42.347, -71.082], 14);
+// ── Map init ──────────────────────────────────────────────────────────────────
+const map = L.map("map", { zoomControl: true }).setView([42.345, -71.082], 14);
+L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+  attribution: '&copy; OSM &copy; CARTO', subdomains: "abcd", maxZoom: 19,
+}).addTo(map);
 
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-    attribution: '&copy; OSM &copy; CARTO',
-    subdomains: "abcd",
-    maxZoom: 19,
+// Boundary polygon (read-only)
+let boundaryLayer = null;
+if (BOUNDARY && BOUNDARY.latlngs) {
+  boundaryLayer = L.polygon(BOUNDARY.latlngs, {
+    color: "#6366f1", fillColor: "#6366f1", fillOpacity: 0.07,
+    weight: 2, dashArray: "6 4",
   }).addTo(map);
+  map.fitBounds(L.polygon(BOUNDARY.latlngs).getBounds(), { padding: [32, 32] });
+}
 
-  // Draw boundary polygon (read-only on main page)
-  if (BOUNDARY && BOUNDARY.latlngs) {
-    L.polygon(BOUNDARY.latlngs, {
-      color: "#6366f1",
-      fillColor: "#6366f1",
-      fillOpacity: 0.07,
-      weight: 2,
-      dashArray: "6 4",
-    }).addTo(map);
-    map.fitBounds(L.polygon(BOUNDARY.latlngs).getBounds(), { padding: [40, 40] });
+// ── State ─────────────────────────────────────────────────────────────────────
+let allApts = [];
+let activeFilter = "all";     // "all" | "yes" | "maybe" | "no" | "unsorted"
+let boundaryOnly = true;      // toggled by the boundary chip
+let activeId = null;
+let markers = {};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+function getFiltered() {
+  let list = boundaryOnly ? allApts.filter(a => a.within_boundary) : allApts;
+  if (activeFilter !== "all") list = list.filter(a => a.list_category === activeFilter);
+  return sortList(list);
+}
+
+function sortList(list) {
+  const v = document.getElementById("sort-select").value;
+  const l = [...list];
+  if (v === "rent_asc")  return l.sort((a, b) => a.rent - b.rent);
+  if (v === "rent_desc") return l.sort((a, b) => b.rent - a.rent);
+  if (v === "beds_desc") return l.sort((a, b) => b.bedrooms - a.bedrooms);
+  if (v === "newest")    return l.sort((a, b) => new Date(b.scraped_at) - new Date(a.scraped_at));
+  return l;
+}
+
+// ── Fetch ─────────────────────────────────────────────────────────────────────
+async function load() {
+  const r = await fetch("/api/apartments");
+  allApts = await r.json();
+  render();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  const visible = getFiltered();
+  const withinCount = allApts.filter(a => a.within_boundary).length;
+
+  document.getElementById("stat-showing").textContent = visible.length;
+  document.getElementById("stat-total").textContent   = allApts.length;
+  document.getElementById("apt-count-label").textContent =
+    `${visible.length} apt${visible.length !== 1 ? "s" : ""}`;
+
+  renderList(visible);
+  renderMarkers(visible);
+}
+
+function renderList(apts) {
+  const el = document.getElementById("apt-list");
+  if (!apts.length) {
+    el.innerHTML = `<div class="empty">
+      <div class="empty-icon">${allApts.length === 0 ? "🕵️" : "🔍"}</div>
+      <div class="empty-title">${allApts.length === 0 ? "No listings yet" : "No matches"}</div>
+      <div class="empty-sub">${allApts.length === 0
+        ? 'Run the scraper first.<br><a href="/admin" style="color:var(--accent)">Go to Admin →</a>'
+        : "Try clearing filters or turning off the boundary toggle."}</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = apts.map(a => {
+    const thumb = a.images && a.images[0]
+      ? `<img class="apt-thumb" src="${a.images[0]}" loading="lazy" alt="" />`
+      : `<div class="apt-thumb-ph">🏠</div>`;
+
+    const cat = a.list_category && a.list_category !== "unsorted" ? a.list_category : null;
+    const catPill = cat ? `<span class="cat-pill ${cat}">${cat}</span>` : "";
+    const nofeePill = a.no_fee ? `<span class="tag nofee">No Fee</span>` : "";
+    const boundaryPill = a.within_boundary
+      ? `<span class="tag inside">In Area</span>`
+      : `<span class="tag outside-tag">Outside</span>`;
+    const sqftPill = a.sqft ? `<span class="tag">${a.sqft} ft²</span>` : "";
+
+    return `<div class="apt-card${a.id === activeId ? " active" : ""}${!a.within_boundary ? " outside" : ""}"
+         data-id="${a.id}" onclick="selectApt(${a.id})">
+      ${thumb}
+      <div class="apt-info">
+        <div class="apt-top">
+          <div class="apt-rent">$${(a.rent||0).toLocaleString()}<span style="font-size:10px;font-weight:400;color:var(--muted)">/mo</span></div>
+          ${catPill}
+        </div>
+        <div class="apt-address">${a.address}</div>
+        <div class="apt-meta">${a.bedrooms ?? "?"}bd / ${a.bathrooms ?? "?"}ba${a.neighborhood ? " · " + a.neighborhood : ""}${a.available_from ? " · avail " + a.available_from : ""}</div>
+        <div class="apt-tags">${boundaryPill}${nofeePill}${sqftPill}</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ── Map markers ───────────────────────────────────────────────────────────────
+const CAT_COLORS = { yes: "#22c55e", maybe: "#f59e0b", no: "#ef4444", unsorted: "#6366f1" };
+
+function makeMarker(a) {
+  const color = CAT_COLORS[a.list_category] || CAT_COLORS.unsorted;
+  const size = a.within_boundary ? 14 : 10;
+  const opacity = a.within_boundary ? "1" : "0.45";
+  return L.divIcon({
+    className: "",
+    html: `<div style="
+      width:${size}px;height:${size}px;border-radius:50%;
+      background:${color};border:2.5px solid rgba(255,255,255,0.9);
+      box-shadow:0 1px 6px rgba(0,0,0,0.55);opacity:${opacity};
+      cursor:pointer;
+    "></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+function renderMarkers(apts) {
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  markers = {};
+
+  // Always show all apts as markers so context is visible, but dim outside-boundary ones
+  const toShow = boundaryOnly
+    ? allApts  // show all pins on map; sidebar list is filtered
+    : allApts;
+
+  toShow.forEach(a => {
+    if (!a.latitude || !a.longitude) return;
+    const m = L.marker([a.latitude, a.longitude], { icon: makeMarker(a) })
+      .bindPopup(`
+        <strong>${a.address}</strong><br>
+        $${(a.rent||0).toLocaleString()}/mo · ${a.bedrooms ?? "?"}bd/${a.bathrooms ?? "?"}ba
+        ${a.within_boundary ? "" : '<br><span style="color:var(--muted);font-size:10px;">Outside your boundary</span>'}
+      `, { maxWidth: 220 })
+      .on("click", () => selectApt(a.id));
+    m.addTo(map);
+    markers[a.id] = m;
+  });
+}
+
+// ── Select apartment ──────────────────────────────────────────────────────────
+function selectApt(id) {
+  activeId = id;
+  const apt = allApts.find(a => a.id === id);
+  if (!apt) return;
+
+  // Highlight card
+  document.querySelectorAll(".apt-card").forEach(el =>
+    el.classList.toggle("active", parseInt(el.dataset.id) === id));
+  const card = document.querySelector(`.apt-card[data-id="${id}"]`);
+  if (card) card.scrollIntoView({ block: "nearest", behavior: "smooth" });
+
+  // Pan map
+  if (apt.latitude && apt.longitude) {
+    map.panTo([apt.latitude, apt.longitude], { animate: true });
+    markers[id]?.openPopup();
   }
 
-  // ── State ──
-  let allApartments = [];
-  let activeFilter = "all";
-  let activeId = null;
-  let markers = {};
+  openDrawer(apt);
+}
 
-  // ── Fetch apartments ──
-  async function loadApartments() {
-    try {
-      const res = await fetch("/api/apartments");
-      allApartments = await res.json();
-      render();
-    } catch (e) {
-      console.error("Failed to load apartments", e);
-    }
+// ── Detail drawer ──────────────────────────────────────────────────────────────
+let drawerApt = null;
+
+function openDrawer(apt) {
+  drawerApt = apt;
+
+  document.getElementById("d-addr").textContent = apt.address;
+
+  const subParts = [apt.neighborhood, apt.within_boundary ? "In your boundary" : "Outside boundary"].filter(Boolean);
+  document.getElementById("d-sub").textContent = subParts.join(" · ");
+
+  document.getElementById("d-rent").textContent  = `$${(apt.rent||0).toLocaleString()}`;
+  document.getElementById("d-beds").textContent  = apt.bedrooms ?? "—";
+  document.getElementById("d-baths").textContent = apt.bathrooms ?? "—";
+  document.getElementById("d-sqft").textContent  = apt.sqft ?? "—";
+  document.getElementById("d-avail").textContent = apt.available_from || "—";
+  document.getElementById("d-nofee-badge").style.display = apt.no_fee ? "" : "none";
+
+  // Images
+  const wrap = document.getElementById("d-images-wrap");
+  const imgs = apt.images || [];
+  if (imgs.length) {
+    wrap.innerHTML = `
+      <div class="img-strip-wrap">
+        <div class="img-strip">${imgs.map(s => `<img src="${s}" alt="" />`).join("")}</div>
+        ${imgs.length > 1 ? `<div class="img-count">${imgs.length} photos</div>` : ""}
+      </div>`;
+  } else {
+    wrap.innerHTML = `<div class="no-photos">No photos available</div>`;
   }
 
-  // ── Render list + markers ──
-  function render() {
-    const sorted = sortApartments([...allApartments]);
-    const filtered = activeFilter === "all"
-      ? sorted
-      : sorted.filter(a => a.list_category === activeFilter);
+  // Category buttons
+  document.querySelectorAll(".cat-btn").forEach(btn => {
+    const c = btn.dataset.cat;
+    btn.className = `cat-btn ${c}`;
+    if (apt.list_category === c) btn.classList.add(`on-${c}`);
+  });
 
-    renderList(filtered);
-    renderMarkers(filtered);
+  document.getElementById("notes-ta").value = apt.notes || "";
+  document.getElementById("notes-feedback").classList.remove("show");
+  document.getElementById("d-source-link").href = apt.source_url || "#";
 
-    document.getElementById("apt-count-label").textContent =
-      `${filtered.length} apartment${filtered.length !== 1 ? "s" : ""}`;
-  }
+  document.getElementById("drawer").classList.add("open");
+}
 
-  function sortApartments(list) {
-    const val = document.getElementById("sort-select").value;
-    if (val === "rent_asc")  return list.sort((a, b) => a.rent - b.rent);
-    if (val === "rent_desc") return list.sort((a, b) => b.rent - a.rent);
-    if (val === "beds_desc") return list.sort((a, b) => b.bedrooms - a.bedrooms);
-    if (val === "newest")    return list.sort((a, b) => new Date(b.scraped_at) - new Date(a.scraped_at));
-    return list;
-  }
+function closeDrawer() {
+  document.getElementById("drawer").classList.remove("open");
+  drawerApt = null;
+  activeId = null;
+  document.querySelectorAll(".apt-card").forEach(el => el.classList.remove("active"));
+}
 
-  function renderList(apartments) {
-    const el = document.getElementById("apt-list");
-    if (!apartments.length) {
-      el.innerHTML = `
-        <div id="empty-state">
-          <div class="empty-icon">🏙️</div>
-          <div class="empty-title">No apartments found</div>
-          <div class="empty-sub">
-            ${allApartments.length === 0
-              ? "Run the scraper to pull listings from Metro Realty.<br>Go to <a href='/admin' style='color:var(--accent)'>Admin</a> to get started."
-              : "No listings match the current filter."}
-          </div>
-        </div>`;
-      return;
-    }
+document.getElementById("drawer-close-btn").addEventListener("click", closeDrawer);
 
-    el.innerHTML = apartments.map(a => {
-      const img = a.images && a.images[0]
-        ? `<img class="apt-thumb" src="${a.images[0]}" alt="" loading="lazy" />`
-        : `<div class="apt-thumb-placeholder">🏠</div>`;
-
-      const catBadge = a.list_category && a.list_category !== "unsorted"
-        ? `<span class="cat-badge cat-${a.list_category}">${a.list_category}</span>`
-        : "";
-
-      const nofee = a.no_fee ? `<span class="tag no-fee">No Fee</span>` : "";
-      const sqft  = a.sqft   ? `<span class="tag">${a.sqft} sqft</span>` : "";
-
-      return `
-        <div class="apt-card${a.id === activeId ? " active" : ""}" data-id="${a.id}" onclick="selectApartment(${a.id})">
-          ${img}
-          <div class="apt-info">
-            <div class="apt-address">${a.address}</div>
-            <div class="apt-details">${a.bedrooms ?? "?"}bd / ${a.bathrooms ?? "?"}ba${a.neighborhood ? " · " + a.neighborhood : ""}</div>
-            <div class="apt-rent">$${(a.rent || 0).toLocaleString()}<span style="font-size:11px;font-weight:400;color:var(--muted)">/mo</span></div>
-            <div class="apt-tags">${nofee}${sqft}${catBadge}</div>
-          </div>
-        </div>`;
-    }).join("");
-  }
-
-  // ── Map markers ──
-  const markerColors = { yes: "#22c55e", maybe: "#f59e0b", no: "#ef4444", unsorted: "#6366f1" };
-
-  function makeIcon(color) {
-    return L.divIcon({
-      className: "",
-      html: `<div style="
-        width:12px;height:12px;border-radius:50%;
-        background:${color};border:2px solid #fff;
-        box-shadow:0 1px 4px rgba(0,0,0,0.5);
-      "></div>`,
-      iconSize: [12, 12],
-      iconAnchor: [6, 6],
-    });
-  }
-
-  function renderMarkers(apartments) {
-    Object.values(markers).forEach(m => map.removeLayer(m));
-    markers = {};
-    apartments.forEach(a => {
-      if (!a.latitude || !a.longitude) return;
-      const color = markerColors[a.list_category] || markerColors.unsorted;
-      const m = L.marker([a.latitude, a.longitude], { icon: makeIcon(color) })
-        .bindPopup(`
-          <strong>${a.address}</strong><br>
-          $${(a.rent||0).toLocaleString()}/mo · ${a.bedrooms ?? "?"}bd/${a.bathrooms ?? "?"}ba
-        `)
-        .on("click", () => selectApartment(a.id));
-      m.addTo(map);
-      markers[a.id] = m;
-    });
-  }
-
-  // ── Select apartment ──
-  function selectApartment(id) {
-    activeId = id;
-    const apt = allApartments.find(a => a.id === id);
-    if (!apt) return;
-
-    // Update sidebar highlight
-    document.querySelectorAll(".apt-card").forEach(el => {
-      el.classList.toggle("active", parseInt(el.dataset.id) === id);
-    });
-    // Scroll card into view
-    const card = document.querySelector(`.apt-card[data-id="${id}"]`);
-    if (card) card.scrollIntoView({ block: "nearest", behavior: "smooth" });
-
-    // Pan map to marker
-    if (apt.latitude && apt.longitude) {
-      map.panTo([apt.latitude, apt.longitude], { animate: true });
-    }
-
-    openDrawer(apt);
-  }
-
-  // ── Detail drawer ──
-  let drawerApt = null;
-
-  function openDrawer(apt) {
-    drawerApt = apt;
-    document.getElementById("drawer-address").textContent = apt.address;
-    document.getElementById("drawer-neighborhood").textContent = apt.neighborhood || "";
-    document.getElementById("d-rent").textContent = `$${(apt.rent||0).toLocaleString()}`;
-    document.getElementById("d-beds").textContent = apt.bedrooms ?? "—";
-    document.getElementById("d-baths").textContent = apt.bathrooms ?? "—";
-    document.getElementById("drawer-notes").value = apt.notes || "";
-    document.getElementById("drawer-source-link").href = apt.source_url || "#";
-
-    // Images
-    const imgEl = document.getElementById("drawer-images");
-    imgEl.innerHTML = (apt.images || []).length
-      ? apt.images.map(src => `<img src="${src}" alt="" />`).join("")
-      : "";
-
-    // Category buttons
-    document.querySelectorAll(".cat-btn").forEach(btn => {
-      btn.className = "cat-btn " + btn.classList[1];
-      if (apt.list_category && btn.classList.contains(apt.list_category)) {
-        btn.classList.add("active-" + apt.list_category);
-      }
-    });
-
-    document.getElementById("detail-drawer").classList.add("open");
-  }
-
-  function closeDrawer() {
-    document.getElementById("detail-drawer").classList.remove("open");
-    drawerApt = null;
-    activeId = null;
-    document.querySelectorAll(".apt-card").forEach(el => el.classList.remove("active"));
-  }
-
-  // ── Set category ──
-  async function setCategory(cat) {
+// ── Category buttons in drawer ────────────────────────────────────────────────
+document.querySelectorAll(".cat-btn").forEach(btn => {
+  btn.addEventListener("click", async function() {
     if (!drawerApt) return;
+    const cat = this.dataset.cat;
     await fetch(`/api/apartments/${drawerApt.id}/rank`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ list_category: cat }),
     });
     drawerApt.list_category = cat;
-    const apt = allApartments.find(a => a.id === drawerApt.id);
+    const apt = allApts.find(a => a.id === drawerApt.id);
     if (apt) apt.list_category = cat;
 
-    // Update buttons
-    document.querySelectorAll(".cat-btn").forEach(btn => {
-      btn.className = "cat-btn " + btn.classList[1];
-      if (btn.classList.contains(cat)) btn.classList.add("active-" + cat);
+    document.querySelectorAll(".cat-btn").forEach(b => {
+      const c = b.dataset.cat;
+      b.className = `cat-btn ${c}`;
+      if (c === cat) b.classList.add(`on-${c}`);
     });
 
-    // Update marker color
     const m = markers[drawerApt.id];
-    if (m) m.setIcon(makeIcon(markerColors[cat] || markerColors.unsorted));
+    if (m) m.setIcon(makeMarker({ ...drawerApt, list_category: cat }));
 
     render();
-  }
-
-  // ── Save notes ──
-  async function saveNotes() {
-    if (!drawerApt) return;
-    const notes = document.getElementById("drawer-notes").value;
-    await fetch(`/api/apartments/${drawerApt.id}/rank`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notes }),
-    });
-    const apt = allApartments.find(a => a.id === drawerApt.id);
-    if (apt) apt.notes = notes;
-    if (drawerApt) drawerApt.notes = notes;
-  }
-
-  // ── Filter chips ──
-  document.querySelectorAll(".chip[data-filter]").forEach(btn => {
-    btn.addEventListener("click", function () {
-      document.querySelectorAll(".chip[data-filter]").forEach(b => b.classList.remove("active"));
-      this.classList.add("active");
-      activeFilter = this.dataset.filter;
-      render();
-    });
+    toast(`Marked as "${cat}"`);
   });
+});
 
-  // ── Sort ──
-  document.getElementById("sort-select").addEventListener("change", render);
-
-  // ── Close drawer on map click ──
-  map.on("click", function (e) {
-    if (!e.originalEvent.target.closest(".leaflet-marker-icon")) {
-      closeDrawer();
-    }
+// ── Notes ─────────────────────────────────────────────────────────────────────
+document.getElementById("notes-save-btn").addEventListener("click", async () => {
+  if (!drawerApt) return;
+  const notes = document.getElementById("notes-ta").value;
+  await fetch(`/api/apartments/${drawerApt.id}/rank`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ notes }),
   });
+  const apt = allApts.find(a => a.id === drawerApt.id);
+  if (apt) apt.notes = notes;
+  if (drawerApt) drawerApt.notes = notes;
+  const fb = document.getElementById("notes-feedback");
+  fb.classList.add("show");
+  setTimeout(() => fb.classList.remove("show"), 2000);
+});
 
-  // ── Boot ──
-  loadApartments();
+// ── Boundary toggle ───────────────────────────────────────────────────────────
+function toggleBoundary() {
+  boundaryOnly = !boundaryOnly;
+  const chip = document.getElementById("boundary-chip");
+  chip.textContent = boundaryOnly ? "📍 In Boundary" : "🌐 All Areas";
+  chip.style.background = boundaryOnly ? "" : "transparent";
+  chip.style.color = boundaryOnly ? "" : "var(--muted)";
+  render();
+}
+
+// ── Category filter chips ─────────────────────────────────────────────────────
+document.querySelectorAll("[data-cat]").forEach(btn => {
+  btn.addEventListener("click", function() {
+    activeFilter = this.dataset.cat;
+    document.querySelectorAll("[data-cat]").forEach(b => {
+      const c = b.dataset.cat;
+      b.classList.remove("active");
+      if (c === "yes")   b.style.cssText = "background:transparent;color:var(--muted)";
+      if (c === "maybe") b.style.cssText = "background:transparent;color:var(--muted)";
+      if (c === "no")    b.style.cssText = "background:transparent;color:var(--muted)";
+      if (c === "all" || c === "unsorted") b.style.cssText = "";
+    });
+    if (activeFilter === "all")      this.classList.add("active");
+    else if (activeFilter === "yes")      { this.style.cssText = ""; this.classList.add("active-green"); this.classList.add("active"); }
+    else if (activeFilter === "maybe")    { this.style.cssText = ""; this.classList.add("active-amber"); this.classList.add("active"); }
+    else if (activeFilter === "no")       { this.style.cssText = ""; this.classList.add("active-red");   this.classList.add("active"); }
+    else if (activeFilter === "unsorted") this.classList.add("active");
+    render();
+  });
+});
+
+document.getElementById("sort-select").addEventListener("change", render);
+
+// ── Close drawer on map click (outside markers) ───────────────────────────────
+map.on("click", () => { if (drawerApt) closeDrawer(); });
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+load();
 </script>
 </body>
 </html>
