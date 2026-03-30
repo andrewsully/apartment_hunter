@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Flask / SQLite
+instance/
+*.db
+*.sqlite3
+
+# Environment
+.env
+.env.*
+
+# Downloaded apartment images (large, not version controlled)
+static/images/apartments/*.jpg
+static/images/apartments/*.jpeg
+static/images/apartments/*.png
+static/images/apartments/*.webp
+static/images/apartments/*.gif
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
