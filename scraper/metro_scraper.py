@@ -34,8 +34,7 @@ import re
 import json
 import time
 import logging
-import requests                          # used only for Nominatim geocoding
-from curl_cffi import requests as cffi  # used for Metro Realty (bypasses TLS fingerprinting)
+from curl_cffi import requests as cffi
 from pathlib import Path
 from datetime import datetime
 from urllib.parse import urljoin, urlparse
@@ -61,13 +60,6 @@ IMAGE_DIR = Path(__file__).parent.parent / "static" / "images" / "apartments"
 IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 REQUEST_DELAY = 3.0   # seconds between page requests
-GEOCODE_DELAY = 1.2   # seconds between geocoding requests (Nominatim policy: 1/sec)
-
-# Used only for Nominatim geocoding (standard requests, not curl_cffi)
-GEOCODE_HEADERS = {
-    "User-Agent": "apartment-hunter/1.0 (github.com/andrewsully/apartment_hunter)",
-    "Referer": "https://github.com/andrewsully/apartment_hunter",
-}
 
 
 # ── HTTP session — impersonates Chrome TLS fingerprint ────────────────────────
@@ -114,22 +106,29 @@ def point_in_polygon(lat: float, lng: float, polygon: list) -> bool:
     return inside
 
 
-# ── Geocoding ──────────────────────────────────────────────────────────────────
+# ── Coordinate extraction (from Metro Realty's own map data) ──────────────────
 
-def geocode_address(address: str) -> tuple:
-    """Geocode via OpenStreetMap Nominatim (free, ~1 req/sec limit)."""
-    url = "https://nominatim.openstreetmap.org/search"
-    params = {"q": address, "format": "json", "limit": 1, "countrycodes": "us"}
-    try:
-        time.sleep(GEOCODE_DELAY)
-        resp = requests.get(url, params=params, headers=GEOCODE_HEADERS, timeout=10)
-        resp.raise_for_status()
-        results = resp.json()
-        if results:
-            return float(results[0]["lat"]), float(results[0]["lon"])
-    except Exception as e:
-        logger.warning("Geocoding failed for %r: %s", address, e)
-    return None, None
+def extract_markers(soup) -> dict:
+    """Parse data-ygl-markers from a search results page.
+    Returns {source_id: (lat, lng)}.
+    """
+    coords = {}
+    el = soup.select_one("[data-ygl-markers]")
+    if not el:
+        return coords
+    for m in json.loads(el["data-ygl-markers"]):
+        sid = urlparse(m["url"]).path.strip("/").split("/")[-1]
+        coords[sid] = (float(m["data"]["lat"]), float(m["data"]["lng"]))
+    return coords
+
+
+def extract_detail_coord(soup) -> tuple | None:
+    """Parse data-ygl-map from a listing detail page. Fallback."""
+    el = soup.select_one("[data-ygl-map]")
+    if not el:
+        return None
+    data = json.loads(el["data-ygl-map"])
+    return float(data["lat"]), float(data["lng"])
 
 
 # ── Image download ─────────────────────────────────────────────────────────────
@@ -232,6 +231,7 @@ def scrape_detail(url: str) -> dict:
         "available_from": None,
         "zip_code":       None,
         "images_raw":     [],
+        "_coord":         None,   # (lat, lng) from data-ygl-map, fallback only
     }
     try:
         time.sleep(REQUEST_DELAY)
@@ -260,6 +260,11 @@ def scrape_detail(url: str) -> dict:
             elif "available" in k:
                 extra["available_from"] = v
 
+        # Exact coordinate from detail page map (fallback if not in search markers)
+        coord = extract_detail_coord(soup)
+        if coord:
+            extra["_coord"] = coord
+
         # Listing photos (hosted on ygl-photos S3)
         for img in soup.select("img[src*='ygl-photos']"):
             src = img.get("src", "")
@@ -282,6 +287,30 @@ def run_scrape(boundary: dict | None = None) -> int:
     new_count = 0
     boundary_latlngs = (boundary or {}).get("latlngs")
 
+    # ── Pass 1: collect all exact coordinates from the map markers on every
+    #           search results page before touching any detail pages ──────────
+    all_coords: dict[str, tuple] = {}
+    page = 1
+    while True:
+        url = SEARCH_URL + (f"&page_index={page}" if page > 1 else "")
+        logger.info("Collecting markers from search page %d…", page)
+        try:
+            time.sleep(REQUEST_DELAY)
+            html = fetch(url)
+        except Exception as e:
+            logger.error("Cannot fetch page %d: %s", page, e)
+            break
+        soup = BeautifulSoup(html, "lxml")
+        coords = extract_markers(soup)
+        logger.info("  %d markers on page %d", len(coords), page)
+        all_coords.update(coords)
+        next_page_url = f"&page_index={page + 1}"
+        if not any(next_page_url in (a.get("href","") or "") for a in soup.select(".ygl-pagination a")):
+            break
+        page += 1
+    logger.info("Total exact coords collected: %d", len(all_coords))
+
+    # ── Pass 2: scrape cards + detail pages, attach coords ───────────────────
     page = 1
     while True:
         url = SEARCH_URL + (f"&page_index={page}" if page > 1 else "")
@@ -311,12 +340,17 @@ def run_scrape(boundary: dict | None = None) -> int:
                 logger.debug("Already stored: %s", listing["source_id"])
                 continue
 
-            # Detail page
+            # Detail page (for images, neighborhood, availability)
             detail = scrape_detail(listing["source_url"])
             full_addr = detail.get("address_full") or listing["address"]
 
-            # Geocode
-            lat, lng = geocode_address(full_addr)
+            # Exact coordinates from Metro Realty's own map data
+            lat, lng = all_coords.get(listing["source_id"], (None, None))
+            if lat is None:
+                # Fallback: detail page data-ygl-map (shouldn't normally be needed)
+                coord = detail.get("_coord")
+                if coord:
+                    lat, lng = coord
             listing["latitude"]  = lat
             listing["longitude"] = lng
 

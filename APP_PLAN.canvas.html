@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apartment Finder — App Game Plan</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #1c2128;
+    --bg4: #21262d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #7d8590;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --purple: #bc8cff;
+    --orange: #f78166;
+    --teal: #39c5cf;
+    --pink: #ff7b72;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; }
+
+  /* ── Layout ── */
+  .shell { display: flex; flex-direction: column; height: 100%; }
+  header { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--bg2); flex-shrink: 0; }
+  header h1 { font-size: 16px; font-weight: 700; color: var(--text); }
+  header p { font-size: 12px; color: var(--muted); }
+  .tab-bar { display: flex; gap: 4px; padding: 8px 20px 0; border-bottom: 1px solid var(--border); background: var(--bg2); flex-shrink: 0; overflow-x: auto; }
+  .tab { padding: 8px 16px; border-radius: 6px 6px 0 0; cursor: pointer; font-size: 13px; color: var(--muted); border: 1px solid transparent; border-bottom: none; white-space: nowrap; transition: all .15s; user-select: none; }
+  .tab:hover { color: var(--text); background: var(--bg3); }
+  .tab.active { color: var(--accent); background: var(--bg); border-color: var(--border); border-bottom-color: var(--bg); font-weight: 600; }
+  .content { flex: 1; overflow-y: auto; padding: 24px 20px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Cards & Layout Helpers ── */
+  .grid { display: grid; gap: 16px; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .cols-4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 900px) { .cols-3, .cols-4 { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 600px) { .cols-2, .cols-3, .cols-4 { grid-template-columns: 1fr; } }
+
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .card-title { font-size: 14px; font-weight: 700; }
+  .card p, .card li { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .card ul { padding-left: 18px; }
+  .card li { margin-bottom: 4px; }
+  .card li strong { color: var(--text); }
+
+  .icon { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .i-blue { background: rgba(88,166,255,.15); }
+  .i-green { background: rgba(63,185,80,.15); }
+  .i-yellow { background: rgba(210,153,34,.15); }
+  .i-purple { background: rgba(188,140,255,.15); }
+  .i-orange { background: rgba(247,129,102,.15); }
+  .i-teal { background: rgba(57,197,207,.15); }
+  .i-pink { background: rgba(255,123,114,.15); }
+
+  .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .b-blue { background: rgba(88,166,255,.15); color: var(--accent); border: 1px solid rgba(88,166,255,.3); }
+  .b-green { background: rgba(63,185,80,.15); color: var(--green); border: 1px solid rgba(63,185,80,.3); }
+  .b-yellow { background: rgba(210,153,34,.15); color: var(--yellow); border: 1px solid rgba(210,153,34,.3); }
+  .b-purple { background: rgba(188,140,255,.15); color: var(--purple); border: 1px solid rgba(188,140,255,.3); }
+  .b-orange { background: rgba(247,129,102,.15); color: var(--orange); border: 1px solid rgba(247,129,102,.3); }
+  .b-teal { background: rgba(57,197,207,.15); color: var(--teal); border: 1px solid rgba(57,197,207,.3); }
+  .b-muted { background: rgba(125,133,144,.1); color: var(--muted); border: 1px solid var(--border); }
+
+  h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+  h3 { font-size: 15px; font-weight: 700; margin-bottom: 10px; color: var(--text); }
+  .section-desc { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  /* ── Priority Pills ── */
+  .feature-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .feature-row:last-child { border-bottom: none; }
+  .feat-name { flex: 1; font-size: 13px; color: var(--text); font-weight: 500; }
+  .feat-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .priority { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+  .p-must { background: rgba(63,185,80,.2); color: var(--green); }
+  .p-nice { background: rgba(210,153,34,.2); color: var(--yellow); }
+  .p-later { background: rgba(125,133,144,.15); color: var(--muted); }
+  .p-v2 { background: rgba(188,140,255,.15); color: var(--purple); }
+
+  /* ── Wireframe ── */
+  .wireframe { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 16px; font-family: monospace; }
+  .wf-bar { background: var(--bg4); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .wf-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
+  .wf-dot.g { background: var(--green); }
+  .wf-dot.y { background: var(--yellow); }
+  .wf-dot.r { background: var(--pink); }
+  .wf-url { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; flex: 1; padding: 3px 8px; font-size: 11px; color: var(--muted); }
+  .wf-nav { background: var(--bg4); border: 1px solid var(--border); border-radius: 6px; display: flex; align-items: center; padding: 0 12px; height: 44px; margin-bottom: 8px; gap: 20px; font-size: 12px; }
+  .wf-logo { font-weight: 800; font-size: 13px; color: var(--accent); margin-right: auto; }
+  .wf-navlink { color: var(--muted); padding: 4px 8px; border-radius: 4px; }
+  .wf-navlink.active { background: rgba(88,166,255,.15); color: var(--accent); }
+  .wf-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--purple), var(--accent)); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; }
+  .wf-filters { background: var(--bg4); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 11px; }
+  .wf-filter-pill { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px; color: var(--muted); cursor: pointer; }
+  .wf-filter-pill.on { border-color: var(--accent); color: var(--accent); background: rgba(88,166,255,.1); }
+  .wf-sort { margin-left: auto; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .wf-layout-icons { display: flex; gap: 4px; }
+  .wf-layout-btn { width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--muted); cursor: pointer; }
+  .wf-layout-btn.active { border-color: var(--accent); color: var(--accent); }
+  .wf-body { display: grid; grid-template-columns: 260px 1fr; gap: 8px; }
+  .wf-sidebar { background: var(--bg4); border: 1px solid var(--border); border-radius: 6px; padding: 10px; }
+  .wf-sidebar-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+  .wf-filter-group { margin-bottom: 12px; }
+  .wf-filter-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .wf-range { height: 3px; background: var(--border); border-radius: 2px; position: relative; margin: 6px 0; }
+  .wf-range-fill { height: 100%; background: var(--accent); border-radius: 2px; width: 60%; }
+  .wf-check { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text); margin-bottom: 3px; }
+  .wf-box { width: 11px; height: 11px; border: 1px solid var(--border); border-radius: 2px; flex-shrink: 0; }
+  .wf-box.checked { background: var(--accent); border-color: var(--accent); }
+  .wf-main { background: var(--bg4); border: 1px solid var(--border); border-radius: 6px; padding: 10px; }
+  .wf-card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .wf-apt-card { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .wf-apt-img { height: 70px; background: linear-gradient(135deg, #1a2332 0%, #2d3f55 100%); display: flex; align-items: center; justify-content: center; font-size: 18px; position: relative; }
+  .wf-apt-cat { position: absolute; top: 4px; right: 4px; font-size: 9px; padding: 1px 5px; border-radius: 3px; font-weight: 700; }
+  .wf-apt-info { padding: 6px 8px; }
+  .wf-apt-addr { font-size: 10px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+  .wf-apt-price { font-size: 13px; font-weight: 800; color: var(--green); }
+  .wf-apt-meta { font-size: 9px; color: var(--muted); margin-top: 2px; }
+  .wf-apt-actions { display: flex; gap: 4px; padding: 4px 8px 6px; }
+  .wf-btn-sm { flex: 1; font-size: 9px; padding: 3px 4px; border-radius: 3px; text-align: center; cursor: pointer; }
+  .wf-btn-yes { background: rgba(63,185,80,.2); color: var(--green); }
+  .wf-btn-no { background: rgba(247,129,102,.2); color: var(--pink); }
+  .wf-btn-maybe { background: rgba(210,153,34,.2); color: var(--yellow); }
+  .wf-stars { display: flex; gap: 1px; font-size: 10px; color: var(--yellow); }
+
+  /* ── Data Model ── */
+  .table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .table th { text-align: left; padding: 8px 12px; background: var(--bg3); color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid var(--border); }
+  .table td { padding: 8px 12px; border-bottom: 1px solid rgba(48,54,61,.5); vertical-align: top; }
+  .table tr:last-child td { border-bottom: none; }
+  .table tr:hover td { background: rgba(255,255,255,.02); }
+  .field-name { font-family: monospace; color: var(--accent); font-size: 12px; }
+  .field-type { font-family: monospace; color: var(--purple); font-size: 11px; }
+  .field-new { font-size: 10px; padding: 1px 5px; background: rgba(63,185,80,.15); color: var(--green); border-radius: 3px; font-weight: 600; }
+  .field-exists { font-size: 10px; padding: 1px 5px; background: rgba(88,166,255,.1); color: var(--accent); border-radius: 3px; font-weight: 600; }
+
+  /* ── Tech Stack ── */
+  .tech-stack { display: flex; flex-direction: column; gap: 6px; }
+  .tech-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 7px; }
+  .tech-layer { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); width: 80px; flex-shrink: 0; }
+  .tech-name { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
+  .tech-why { font-size: 12px; color: var(--muted); flex: 2; }
+
+  /* ── Map section ── */
+  .map-mock { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .map-frame { background: #1a2e1a; border: 1px solid var(--border); border-radius: 8px; height: 200px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .map-streets { position: absolute; inset: 0; }
+  .map-street { position: absolute; background: rgba(255,255,255,.06); }
+  .map-apt-pin { position: absolute; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-size: 8px; cursor: pointer; transition: transform .1s; }
+  .map-apt-pin:hover { transform: scale(1.3); }
+  .map-pin-yes { background: var(--green); }
+  .map-pin-maybe { background: var(--yellow); }
+  .map-pin-no { background: var(--pink); }
+  .map-pin-unsorted { background: var(--accent); }
+  .map-mbta-line { position: absolute; height: 3px; border-radius: 2px; }
+  .map-mbta-station { position: absolute; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid white; }
+  .map-controls { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .map-toggle { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg4); border: 1px solid var(--border); border-radius: 6px; font-size: 12px; cursor: pointer; user-select: none; }
+  .map-toggle.on { border-color: var(--accent); background: rgba(88,166,255,.1); color: var(--accent); }
+  .toggle-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .mbta-red { color: #da291c; }
+  .mbta-green { color: #00843d; }
+  .mbta-orange { color: #ed8b00; }
+  .mbta-blue { color: #003da5; }
+
+  /* ── Roommate section ── */
+  .roommate-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .rm-header { display: flex; align-items: center; gap: 10px; }
+  .rm-avatar { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; color: white; flex-shrink: 0; }
+  .rm-name { font-size: 14px; font-weight: 700; }
+  .rm-role { font-size: 11px; color: var(--muted); }
+  .rm-stats { display: flex; flex-direction: column; gap: 4px; }
+  .rm-stat { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 4px 8px; background: var(--bg3); border-radius: 5px; }
+  .rm-stat-label { color: var(--muted); }
+  .rm-stat-value { color: var(--text); font-weight: 600; }
+
+  /* ── Phase timeline ── */
+  .timeline { display: flex; flex-direction: column; gap: 0; }
+  .phase { display: flex; gap: 16px; }
+  .phase-left { display: flex; flex-direction: column; align-items: center; width: 40px; flex-shrink: 0; }
+  .phase-dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: white; flex-shrink: 0; }
+  .phase-line { flex: 1; width: 2px; background: var(--border); margin: 4px 0; min-height: 20px; }
+  .phase-content { flex: 1; padding-bottom: 20px; }
+  .phase-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+  .phase-desc { font-size: 12px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; }
+  .phase-tasks { display: flex; flex-wrap: wrap; gap: 4px; }
+  .phase-task { font-size: 11px; padding: 2px 8px; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; color: var(--muted); }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #444c56; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<header>
+  <div class="icon i-blue">🏠</div>
+  <div>
+    <h1>Apartment Finder — App Game Plan</h1>
+    <p>Boston · 3 Roommates · Flask + SQLite · Scraped listings from Metro</p>
+  </div>
+  <div style="margin-left:auto;display:flex;gap:8px;flex-shrink:0;">
+    <span class="badge b-green">Planning</span>
+    <span class="badge b-muted">Mar 2026</span>
+  </div>
+</header>
+
+<div class="tab-bar">
+  <div class="tab active" onclick="showTab('overview')">Overview</div>
+  <div class="tab" onclick="showTab('wireframe')">UI Wireframe</div>
+  <div class="tab" onclick="showTab('features')">Feature List</div>
+  <div class="tab" onclick="showTab('users')">Users & Roommates</div>
+  <div class="tab" onclick="showTab('map')">Map & MBTA</div>
+  <div class="tab" onclick="showTab('datamodel')">Data Model</div>
+  <div class="tab" onclick="showTab('techstack')">Tech Stack</div>
+  <div class="tab" onclick="showTab('phases')">Build Phases</div>
+</div>
+
+<div class="content">
+
+  <!-- OVERVIEW -->
+  <div class="panel active" id="tab-overview">
+    <h2>What We're Building</h2>
+    <p class="section-desc">A collaborative apartment hunting app for 3 roommates, scraping Boston listings and layering on shared decision-making tools — ratings, comments, personal commute stats, and an MBTA-aware map.</p>
+
+    <div class="grid cols-4" style="margin-bottom:24px;">
+      <div class="card">
+        <div class="card-header"><div class="icon i-blue">📋</div><span class="card-title">Browse</span></div>
+        <p>Grid or list view of all scraped listings. Filter by price, beds, neighborhood, pet policy. Sort by rent, date, rating, distance.</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="icon i-green">👥</div><span class="card-title">Collaborate</span></div>
+        <p>3 user accounts. Each person has their own rating, favorites, and comments on every apartment. See at a glance what each roommate thinks.</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="icon i-teal">🗺️</div><span class="card-title">Map</span></div>
+        <p>Interactive Leaflet map. Pins color-coded by category. Optional MBTA overlay showing Red, Green, Orange, Blue lines + stations.</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="icon i-purple">📏</div><span class="card-title">Personal Stats</span></div>
+        <p>Each user sets their work address. Auto-calc walking or T commute time per apartment. See your commute score on every card.</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <h3>What Already Exists vs. What to Build</h3>
+    <div class="grid cols-2">
+      <div class="card">
+        <div class="card-header"><div class="icon i-green">✅</div><span class="card-title" style="color:var(--green)">Already Built</span></div>
+        <ul>
+          <li><strong>Scraper</strong> — Metro listings → SQLite</li>
+          <li><strong>Apartment model</strong> — address, rent, beds, baths, sqft, lat/lng, images</li>
+          <li><strong>Basic ranking</strong> — rank, list_category (yes/maybe/no), notes</li>
+          <li><strong>Admin panel</strong> — boundary editor, scrape trigger</li>
+          <li><strong>Flask app + REST API</strong></li>
+          <li><strong>Local image storage</strong></li>
+          <li><strong>Boundary filtering</strong> — only show apts in drawn zone</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="icon i-orange">🔨</div><span class="card-title" style="color:var(--orange)">To Build</span></div>
+        <ul>
+          <li><strong>User auth</strong> — 3 accounts, session-based login</li>
+          <li><strong>Per-user ratings + favorites</strong></li>
+          <li><strong>Comments system</strong></li>
+          <li><strong>Personal commute addresses</strong> (walk vs. T)</li>
+          <li><strong>Commute distance/time calculation</strong></li>
+          <li><strong>Apartment detail page</strong> — full photos, all stats, roommate reactions</li>
+          <li><strong>Map view</strong> with MBTA overlay toggle</li>
+          <li><strong>Filter sidebar + sort bar</strong></li>
+          <li><strong>Group consensus view</strong> — aggregated ratings</li>
+          <li><strong>Polished UI</strong> — dark theme, grid/list toggle</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- WIREFRAME -->
+  <div class="panel" id="tab-wireframe">
+    <h2>UI Wireframe</h2>
+    <p class="section-desc">A rough layout sketch of the main listing page. Click the toggles below to see how different states look.</p>
+
+    <div class="wireframe">
+      <!-- Browser chrome -->
+      <div class="wf-bar">
+        <div class="wf-dot r"></div><div class="wf-dot y"></div><div class="wf-dot g"></div>
+        <div class="wf-url">localhost:5001</div>
+      </div>
+      <!-- Nav -->
+      <div class="wf-nav">
+        <span class="wf-logo">🏠 AptFinder</span>
+        <span class="wf-navlink active">Listings</span>
+        <span class="wf-navlink">Map</span>
+        <span class="wf-navlink">Compare</span>
+        <span class="wf-navlink">Favorites</span>
+        <div class="wf-avatar">A</div>
+      </div>
+      <!-- Filter bar -->
+      <div class="wf-filters">
+        <span style="font-size:11px;color:var(--muted);font-weight:700;">FILTER:</span>
+        <span class="wf-filter-pill on">Studio–2BR</span>
+        <span class="wf-filter-pill">$1,800–$3,200</span>
+        <span class="wf-filter-pill on">No Fee</span>
+        <span class="wf-filter-pill">Pet Friendly</span>
+        <span class="wf-filter-pill">Available Aug</span>
+        <span class="wf-filter-pill">Neighborhoods ▾</span>
+        <div class="wf-sort">
+          Sort: <span style="color:var(--accent);">Price ↑</span>
+        </div>
+        <div class="wf-layout-icons">
+          <div class="wf-layout-btn active">▦</div>
+          <div class="wf-layout-btn">≡</div>
+          <div class="wf-layout-btn">🗺</div>
+        </div>
+      </div>
+      <!-- Body -->
+      <div class="wf-body">
+        <!-- Sidebar -->
+        <div class="wf-sidebar">
+          <div class="wf-sidebar-title">Filters</div>
+          <div class="wf-filter-group">
+            <div class="wf-filter-label">Rent Range</div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>$1,500</span><span>$4,000</span></div>
+            <div class="wf-range"><div class="wf-range-fill"></div></div>
+          </div>
+          <div class="wf-filter-group">
+            <div class="wf-filter-label">Bedrooms</div>
+            <div class="wf-check"><div class="wf-box checked"></div>Studio</div>
+            <div class="wf-check"><div class="wf-box checked"></div>1 BR</div>
+            <div class="wf-check"><div class="wf-box checked"></div>2 BR</div>
+            <div class="wf-check"><div class="wf-box"></div>3 BR</div>
+          </div>
+          <div class="wf-filter-group">
+            <div class="wf-filter-label">Category</div>
+            <div class="wf-check"><div class="wf-box checked"></div><span style="color:var(--green)">✓ Yes</span></div>
+            <div class="wf-check"><div class="wf-box checked"></div><span style="color:var(--yellow)">? Maybe</span></div>
+            <div class="wf-check"><div class="wf-box checked"></div>Unsorted</div>
+            <div class="wf-check"><div class="wf-box"></div><span style="color:var(--pink)">✗ No</span></div>
+          </div>
+          <div class="wf-filter-group">
+            <div class="wf-filter-label">Commute (my walk)</div>
+            <div class="wf-range"><div class="wf-range-fill" style="width:40%"></div></div>
+            <div style="font-size:10px;color:var(--muted)">≤ 20 min walk</div>
+          </div>
+          <div class="wf-filter-group">
+            <div class="wf-filter-label">Amenities</div>
+            <div class="wf-check"><div class="wf-box"></div>No Fee</div>
+            <div class="wf-check"><div class="wf-box"></div>Pets OK</div>
+            <div class="wf-check"><div class="wf-box"></div>Parking</div>
+            <div class="wf-check"><div class="wf-box"></div>Laundry</div>
+          </div>
+          <div class="wf-filter-group">
+            <div class="wf-filter-label">Roommate Votes</div>
+            <div class="wf-check"><div class="wf-box"></div>All liked</div>
+            <div class="wf-check"><div class="wf-box"></div>I liked</div>
+            <div class="wf-check"><div class="wf-box"></div>Has comments</div>
+          </div>
+        </div>
+        <!-- Grid -->
+        <div class="wf-main">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Showing <strong style="color:var(--text)">47</strong> apartments · sorted by price</div>
+          <div class="wf-card-grid">
+            <!-- Card 1 -->
+            <div class="wf-apt-card">
+              <div class="wf-apt-img">🏢<div class="wf-apt-cat" style="background:rgba(63,185,80,.3);color:var(--green)">YES</div></div>
+              <div class="wf-apt-info">
+                <div class="wf-apt-addr">23 Marlborough St</div>
+                <div class="wf-apt-price">$2,400/mo</div>
+                <div class="wf-apt-meta">2BR · 1BA · Back Bay</div>
+                <div class="wf-stars">★★★★☆</div>
+                <div style="display:flex;gap:4px;margin-top:3px;font-size:9px;color:var(--muted)">
+                  <span>🚶 12min</span><span>🚇 6min</span><span>💬 3</span>
+                </div>
+              </div>
+              <div class="wf-apt-actions">
+                <div class="wf-btn-sm wf-btn-yes">✓ Yes</div>
+                <div class="wf-btn-sm wf-btn-maybe">? Maybe</div>
+                <div class="wf-btn-sm wf-btn-no">✗ No</div>
+              </div>
+            </div>
+            <!-- Card 2 -->
+            <div class="wf-apt-card">
+              <div class="wf-apt-img">🏠<div class="wf-apt-cat" style="background:rgba(210,153,34,.3);color:var(--yellow)">MAYBE</div></div>
+              <div class="wf-apt-info">
+                <div class="wf-apt-addr">15 St Stephen St</div>
+                <div class="wf-apt-price">$2,950/mo</div>
+                <div class="wf-apt-meta">3BR · 1BA · Fenway</div>
+                <div class="wf-stars">★★★☆☆</div>
+                <div style="display:flex;gap:4px;margin-top:3px;font-size:9px;color:var(--muted)">
+                  <span>🚶 18min</span><span>🚇 4min</span><span>💬 1</span>
+                </div>
+              </div>
+              <div class="wf-apt-actions">
+                <div class="wf-btn-sm wf-btn-yes">✓ Yes</div>
+                <div class="wf-btn-sm wf-btn-maybe">? Maybe</div>
+                <div class="wf-btn-sm wf-btn-no">✗ No</div>
+              </div>
+            </div>
+            <!-- Card 3 -->
+            <div class="wf-apt-card">
+              <div class="wf-apt-img">🏗️<div class="wf-apt-cat" style="background:rgba(125,133,144,.15);color:var(--muted)">NEW</div></div>
+              <div class="wf-apt-info">
+                <div class="wf-apt-addr">88 Aberdeen St</div>
+                <div class="wf-apt-price">$3,100/mo</div>
+                <div class="wf-apt-meta">3BR · 2BA · Brookline</div>
+                <div class="wf-stars" style="color:var(--border)">★★★★★</div>
+                <div style="display:flex;gap:4px;margin-top:3px;font-size:9px;color:var(--muted)">
+                  <span>🚶 —</span><span>🚇 9min</span><span>💬 0</span>
+                </div>
+              </div>
+              <div class="wf-apt-actions">
+                <div class="wf-btn-sm wf-btn-yes">✓ Yes</div>
+                <div class="wf-btn-sm wf-btn-maybe">? Maybe</div>
+                <div class="wf-btn-sm wf-btn-no">✗ No</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <h3>Key UI Zones</h3>
+      <div class="grid cols-3">
+        <div class="card">
+          <div class="card-header"><div class="icon i-blue">🔝</div><span class="card-title">Top Nav</span></div>
+          <ul>
+            <li><strong>Logo / brand</strong></li>
+            <li><strong>Listings</strong> — main grid/list</li>
+            <li><strong>Map</strong> — full-screen map view</li>
+            <li><strong>Compare</strong> — side-by-side up to 4</li>
+            <li><strong>Favorites</strong> — your starred list</li>
+            <li><strong>Avatar</strong> — account menu + profile</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="icon i-teal">◀</div><span class="card-title">Filter Sidebar</span></div>
+          <ul>
+            <li><strong>Rent range</strong> — dual-handle slider</li>
+            <li><strong>Bedroom count</strong> — multi-select</li>
+            <li><strong>Category</strong> — yes/maybe/no/unsorted</li>
+            <li><strong>My commute</strong> — max walk/T time</li>
+            <li><strong>Amenities</strong> — no fee, pets, parking…</li>
+            <li><strong>Roommate votes</strong> — filter by consensus</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="icon i-green">🃏</div><span class="card-title">Apartment Card</span></div>
+          <ul>
+            <li><strong>Hero image</strong> — first scraped photo</li>
+            <li><strong>Category badge</strong> — YES / MAYBE / NO</li>
+            <li><strong>Address, price, beds/baths</strong></li>
+            <li><strong>Star rating</strong> — your personal rating</li>
+            <li><strong>Walk + T time</strong> + comment count</li>
+            <li><strong>Quick vote buttons</strong> — Yes / Maybe / No</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="panel" id="tab-features">
+    <h2>Feature List</h2>
+    <p class="section-desc">Every planned feature with a priority rating. <span class="badge b-green">Must Have</span> = MVP. <span class="badge b-yellow">Nice to Have</span> = Phase 2. <span class="badge b-purple">V2 Idea</span> = stretch goal.</p>
+
+    <div class="grid cols-2">
+      <div class="card">
+        <h3>🔍 Browse & Filter</h3>
+        <div class="feature-row"><div><div class="feat-name">Grid / List / Map view toggle</div><div class="feat-desc">Switch between 3-column grid, condensed list, or full-screen map</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Filter sidebar</div><div class="feat-desc">Rent, beds, baths, neighborhood, no-fee, pet-friendly, availability</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Sort bar</div><div class="feat-desc">Sort by rent, date scraped, rating, commute time, sqft, neighborhood</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Quick search / address search</div><div class="feat-desc">Fuzzy search by address or neighborhood</div></div><span class="priority p-nice">Nice to Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Active filter chips</div><div class="feat-desc">Show currently applied filters as removable chips above the grid</div></div><span class="priority p-nice">Nice to Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Save filter presets</div><div class="feat-desc">Each user can save named filter combos</div></div><span class="priority p-v2">V2 Idea</span></div>
+      </div>
+
+      <div class="card">
+        <h3>🃏 Apartment Cards & Detail</h3>
+        <div class="feature-row"><div><div class="feat-name">Card with hero image</div><div class="feat-desc">First scraped photo, price, beds/baths, category badge</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Quick vote (Yes/Maybe/No)</div><div class="feat-desc">One-click category on every card</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Apartment detail page</div><div class="feat-desc">Full photo gallery, all fields, roommate reactions panel, comments</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Photo gallery slideshow</div><div class="feat-desc">Click-through all scraped photos with prev/next</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Commute preview on card</div><div class="feat-desc">Walk time + T time shown inline on each card for current user</div></div><span class="priority p-nice">Nice to Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Listing source link</div><div class="feat-desc">Link back to original Metro listing</div></div><span class="priority p-must">Must Have</span></div>
+      </div>
+
+      <div class="card">
+        <h3>👥 Users & Auth</h3>
+        <div class="feature-row"><div><div class="feat-name">Simple login (no email signup)</div><div class="feat-desc">3 hardcoded/invited accounts — username + password, Flask-Login sessions</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">User profiles</div><div class="feat-desc">Avatar color, display name, work address(es)</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Per-user ratings (1–5 stars)</div><div class="feat-desc">Each user has their own star rating per apartment, stored separately</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Per-user category (yes/maybe/no)</div><div class="feat-desc">Distinct from the global list_category — each person votes independently</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Personal favorites list</div><div class="feat-desc">Each user has a starred/hearted list separate from yes/maybe/no</div></div><span class="priority p-nice">Nice to Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Group consensus indicator</div><div class="feat-desc">Small icons on card showing each roommate's vote at a glance</div></div><span class="priority p-nice">Nice to Have</span></div>
+      </div>
+
+      <div class="card">
+        <h3>💬 Comments & Notes</h3>
+        <div class="feature-row"><div><div class="feat-name">Comments on detail page</div><div class="feat-desc">Threaded comments per apartment, per user, with timestamps</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Comment count on cards</div><div class="feat-desc">Show total comment count as a badge on the listing card</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Personal notes field</div><div class="feat-desc">Private note per user per apt (not shared with roommates)</div></div><span class="priority p-nice">Nice to Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Mention / tag roommate in comment</div><div class="feat-desc">@tag to call attention</div></div><span class="priority p-v2">V2 Idea</span></div>
+      </div>
+
+      <div class="card">
+        <h3>📏 Commute & Personal Stats</h3>
+        <div class="feature-row"><div><div class="feat-name">User sets work address(es)</div><div class="feat-desc">Each user stores 1+ destinations with label (e.g. "Work", "Gym")</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Commute mode preference</div><div class="feat-desc">Per destination: walking, T, bike, drive</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Walk/T time shown on cards</div><div class="feat-desc">Pre-calculated at scrape/update time or fetched live from API</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Filter by max commute time</div><div class="feat-desc">Sidebar slider: "Show only apts within 20 min walk"</div></div><span class="priority p-nice">Nice to Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Custom stat fields</div><div class="feat-desc">Each user can define custom yes/no or text fields per apt (e.g. "Has rooftop?")</div></div><span class="priority p-v2">V2 Idea</span></div>
+      </div>
+
+      <div class="card">
+        <h3>🗺️ Map & MBTA</h3>
+        <div class="feature-row"><div><div class="feat-name">Full map view</div><div class="feat-desc">Leaflet map with all apartment pins, click to open detail</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Pins color-coded by category</div><div class="feat-desc">Green=yes, yellow=maybe, red=no, blue=unsorted</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">MBTA lines overlay toggle</div><div class="feat-desc">Show/hide Red, Green, Orange, Blue lines as colored polylines with station markers</div></div><span class="priority p-must">Must Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Station popups</div><div class="feat-desc">Click a station to see its name, lines, and accessibility info</div></div><span class="priority p-nice">Nice to Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">User work address pin</div><div class="feat-desc">Show each user's work location on map</div></div><span class="priority p-nice">Nice to Have</span></div>
+        <div class="feature-row"><div><div class="feat-name">Commute radius rings</div><div class="feat-desc">Draw walking-distance circle around work address</div></div><span class="priority p-v2">V2 Idea</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- USERS & ROOMMATES -->
+  <div class="panel" id="tab-users">
+    <h2>Users & Roommates System</h2>
+    <p class="section-desc">A lightweight multi-user layer designed for exactly 3 people. No public registration — accounts are created by an admin (you) or via invite code. The goal is independent opinions that can be aggregated.</p>
+
+    <div class="grid cols-3" style="margin-bottom:24px;">
+      <div class="roommate-card">
+        <div class="rm-header">
+          <div class="rm-avatar" style="background:linear-gradient(135deg,#58a6ff,#bc8cff)">A</div>
+          <div><div class="rm-name">Andrew (You)</div><div class="rm-role">Admin · Creator</div></div>
+        </div>
+        <div class="rm-stats">
+          <div class="rm-stat"><span class="rm-stat-label">Work address</span><span class="rm-stat-value">Custom set</span></div>
+          <div class="rm-stat"><span class="rm-stat-label">Commute mode</span><span class="rm-stat-value">🚶 Walk</span></div>
+          <div class="rm-stat"><span class="rm-stat-label">Priority stat</span><span class="rm-stat-value">Walk to work</span></div>
+          <div class="rm-stat"><span class="rm-stat-label">Votes cast</span><span class="rm-stat-value badge b-blue">—</span></div>
+        </div>
+      </div>
+      <div class="roommate-card">
+        <div class="rm-header">
+          <div class="rm-avatar" style="background:linear-gradient(135deg,#3fb950,#39c5cf)">R</div>
+          <div><div class="rm-name">Roommate 2</div><div class="rm-role">Member</div></div>
+        </div>
+        <div class="rm-stats">
+          <div class="rm-stat"><span class="rm-stat-label">Work address</span><span class="rm-stat-value">Custom set</span></div>
+          <div class="rm-stat"><span class="rm-stat-label">Commute mode</span><span class="rm-stat-value">🚇 T preferred</span></div>
+          <div class="rm-stat"><span class="rm-stat-label">Priority stat</span><span class="rm-stat-value">T ride time</span></div>
+          <div class="rm-stat"><span class="rm-stat-label">Votes cast</span><span class="rm-stat-value badge b-green">—</span></div>
+        </div>
+      </div>
+      <div class="roommate-card">
+        <div class="rm-header">
+          <div class="rm-avatar" style="background:linear-gradient(135deg,#f78166,#d29922)">R</div>
+          <div><div class="rm-name">Roommate 3</div><div class="rm-role">Member</div></div>
+        </div>
+        <div class="rm-stats">
+          <div class="rm-stat"><span class="rm-stat-label">Work address</span><span class="rm-stat-value">Custom set</span></div>
+          <div class="rm-stat"><span class="rm-stat-label">Commute mode</span><span class="rm-stat-value">Custom</span></div>
+          <div class="rm-stat"><span class="rm-stat-label">Priority stat</span><span class="rm-stat-value">Custom</span></div>
+          <div class="rm-stat"><span class="rm-stat-label">Votes cast</span><span class="rm-stat-value badge b-orange">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid cols-2">
+      <div class="card">
+        <div class="card-header"><div class="icon i-blue">🔐</div><span class="card-title">Auth Approach</span></div>
+        <ul>
+          <li><strong>Flask-Login</strong> — session-based, very simple</li>
+          <li><strong>No email verification</strong> — 3 hardcoded users or created via admin</li>
+          <li><strong>Password hashing</strong> with werkzeug (already in Flask)</li>
+          <li><strong>Invite code</strong> — optional: one-time code to register a slot</li>
+          <li><strong>Persistent sessions</strong> — "remember me" so you don't re-login</li>
+          <li><strong>Admin flag</strong> on User model — you can edit boundary, trigger scrapes</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="icon i-purple">📐</div><span class="card-title">Per-User Data</span></div>
+        <ul>
+          <li><strong>UserRating</strong> table — user_id, apt_id, stars (1–5), category (yes/maybe/no), is_favorite</li>
+          <li><strong>Comment</strong> table — user_id, apt_id, text, created_at</li>
+          <li><strong>UserDestination</strong> table — user_id, label, address, lat/lng, mode (walk/T/bike/drive)</li>
+          <li><strong>CommuteCache</strong> table — user_id, apt_id, dest_id, minutes (cached result)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="icon i-green">🤝</div><span class="card-title">Group Consensus UI</span></div>
+        <p style="margin-bottom:8px;">On every apartment card and detail page, show a small row of roommate vote icons:</p>
+        <div style="display:flex;gap:8px;align-items:center;padding:8px;background:var(--bg3);border-radius:6px;">
+          <div class="rm-avatar" style="width:24px;height:24px;font-size:10px;background:linear-gradient(135deg,#58a6ff,#bc8cff)">A</div>
+          <span style="font-size:12px;color:var(--green)">✓ Yes</span>
+          <div class="rm-avatar" style="width:24px;height:24px;font-size:10px;background:linear-gradient(135deg,#3fb950,#39c5cf)">R</div>
+          <span style="font-size:12px;color:var(--yellow)">? Maybe</span>
+          <div class="rm-avatar" style="width:24px;height:24px;font-size:10px;background:linear-gradient(135deg,#f78166,#d29922)">R</div>
+          <span style="font-size:12px;color:var(--muted)">— Unvoted</span>
+        </div>
+        <p style="margin-top:8px;">Consensus badge: <span class="badge b-green">All Yes</span> <span class="badge b-yellow">Mixed</span> <span class="badge b-orange">Split</span></p>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="icon i-teal">📊</div><span class="card-title">Compare View</span></div>
+        <p style="margin-bottom:8px;">Side-by-side comparison of up to 4 apartments. Each column shows:</p>
+        <ul>
+          <li><strong>Photos, price, address</strong></li>
+          <li><strong>Each roommate's rating + vote</strong></li>
+          <li><strong>Each person's commute time</strong></li>
+          <li><strong>Amenities checklist</strong></li>
+          <li>Select apartments to compare from the card grid via a checkbox</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="panel" id="tab-map">
+    <h2>Map & MBTA Overlay</h2>
+    <p class="section-desc">The map is a first-class view, not just a sidebar widget. Built on Leaflet.js (already in your existing app). MBTA data is available as open GeoJSON from the MBTA Open Data Portal.</p>
+
+    <div class="map-mock">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600;">MAP PREVIEW (illustrative)</div>
+      <div class="map-frame">
+        <!-- Simulated streets -->
+        <div class="map-street" style="width:100%;height:2px;top:40%;opacity:.4"></div>
+        <div class="map-street" style="width:2px;height:100%;left:35%;opacity:.4"></div>
+        <div class="map-street" style="width:2px;height:100%;left:65%;opacity:.4"></div>
+        <div class="map-street" style="width:100%;height:2px;top:65%;opacity:.4"></div>
+        <!-- MBTA Red line -->
+        <div class="map-mbta-line" style="background:#da291c;width:45%;left:20%;top:38%;transform:rotate(-5deg);opacity:.85;height:4px;"></div>
+        <!-- MBTA Green line -->
+        <div class="map-mbta-line" style="background:#00843d;width:60%;left:15%;top:62%;transform:rotate(3deg);opacity:.85;height:4px;"></div>
+        <!-- MBTA Orange line -->
+        <div class="map-mbta-line" style="background:#ed8b00;width:4px;height:55%;left:34%;top:22%;opacity:.85;"></div>
+        <!-- Stations -->
+        <div class="map-mbta-station" style="background:#da291c;left:32%;top:35%;"></div>
+        <div class="map-mbta-station" style="background:#da291c;left:52%;top:36%;"></div>
+        <div class="map-mbta-station" style="background:#00843d;left:25%;top:60%;"></div>
+        <div class="map-mbta-station" style="background:#00843d;left:45%;top:61%;"></div>
+        <div class="map-mbta-station" style="background:#00843d;left:65%;top:63%;"></div>
+        <div class="map-mbta-station" style="background:#ed8b00;left:33%;top:25%;"></div>
+        <div class="map-mbta-station" style="background:#ed8b00;left:34%;top:48%;"></div>
+        <!-- Apartment pins -->
+        <div class="map-apt-pin map-pin-yes" style="left:38%;top:30%;" title="Yes">🏠</div>
+        <div class="map-apt-pin map-pin-maybe" style="left:55%;top:45%;" title="Maybe">🏠</div>
+        <div class="map-apt-pin map-pin-yes" style="left:28%;top:55%;" title="Yes">🏠</div>
+        <div class="map-apt-pin map-pin-unsorted" style="left:70%;top:35%;" title="Unsorted">🏠</div>
+        <div class="map-apt-pin map-pin-no" style="left:48%;top:70%;" title="No">🏠</div>
+        <div class="map-apt-pin map-pin-maybe" style="left:60%;top:25%;" title="Maybe">🏠</div>
+        <div class="map-apt-pin map-unsorted" style="left:22%;top:40%;" title="Unsorted">🏠</div>
+        <div style="position:absolute;bottom:8px;left:8px;background:rgba(13,17,23,.85);border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:10px;">
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--green);display:inline-block;border:1.5px solid white;"></span> Yes</div>
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--yellow);display:inline-block;border:1.5px solid white;"></span> Maybe</div>
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--pink);display:inline-block;border:1.5px solid white;"></span> No</div>
+          <div style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block;border:1.5px solid white;"></span> Unsorted</div>
+        </div>
+      </div>
+      <div class="map-controls">
+        <div class="map-toggle on" id="tog-apts" onclick="this.classList.toggle('on')">
+          <div class="toggle-dot"></div> Apartments (47)
+        </div>
+        <div class="map-toggle on mbta-red" id="tog-red" onclick="this.classList.toggle('on')">
+          <div class="toggle-dot"></div> Red Line
+        </div>
+        <div class="map-toggle on mbta-green" id="tog-green" onclick="this.classList.toggle('on')">
+          <div class="toggle-dot"></div> Green Line
+        </div>
+        <div class="map-toggle on mbta-orange" id="tog-orange" onclick="this.classList.toggle('on')">
+          <div class="toggle-dot"></div> Orange Line
+        </div>
+        <div class="map-toggle mbta-blue" id="tog-blue" onclick="this.classList.toggle('on')">
+          <div class="toggle-dot"></div> Blue Line
+        </div>
+        <div class="map-toggle" id="tog-work" onclick="this.classList.toggle('on')">
+          <div class="toggle-dot"></div> Work Addresses
+        </div>
+        <div class="map-toggle" id="tog-boundary" onclick="this.classList.toggle('on')">
+          <div class="toggle-dot"></div> Search Boundary
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="grid cols-2">
+      <div class="card">
+        <div class="card-header"><div class="icon i-teal">🚇</div><span class="card-title">MBTA Data Source</span></div>
+        <ul>
+          <li><strong>MBTA Open Data</strong> — <code style="font-size:11px;color:var(--accent)">api.mbta.com</code> or static GeoJSON</li>
+          <li><strong>Static download recommended</strong> — download the route shapes GeoJSON once, store locally in <code style="font-size:11px;color:var(--accent)">data/mbta_routes.geojson</code></li>
+          <li><strong>Lines:</strong> Red, Green (B/C/D/E), Orange, Blue, Silver (optional)</li>
+          <li><strong>Stations:</strong> Name, lat/lng, line(s), accessibility (ADA)</li>
+          <li><strong>Leaflet GeoJSON layer</strong> — style each line by color, add circle markers for stations</li>
+          <li><strong>Toggle stored in localStorage</strong> — remembers your last state</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="icon i-purple">⏱️</div><span class="card-title">Commute Calculation</span></div>
+        <ul>
+          <li><strong>Google Maps Distance Matrix API</strong> — most accurate, handles transit</li>
+          <li><strong>OpenRouteService</strong> — free alternative for walking/cycling</li>
+          <li><strong>Fallback: straight-line distance</strong> — simple haversine, no API key needed, less accurate</li>
+          <li><strong>Cache results</strong> in <code style="font-size:11px;color:var(--accent)">CommuteCache</code> table — only recompute when address changes</li>
+          <li><strong>Batch calculate</strong> on profile save — pre-fill commute for all current listings</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATA MODEL -->
+  <div class="panel" id="tab-datamodel">
+    <h2>Data Model</h2>
+    <p class="section-desc">The existing <code style="color:var(--accent)">Apartment</code> model is solid. Here's what needs to be added to support multi-user features. All new tables link back to apartments and users.</p>
+
+    <div style="margin-bottom:20px;">
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <span class="field-exists" style="padding:3px 10px;border-radius:4px;">Exists</span> <span style="font-size:12px;color:var(--muted)">= already in your models.py</span>
+        &nbsp;&nbsp;
+        <span class="field-new" style="padding:3px 10px;border-radius:4px;">New</span> <span style="font-size:12px;color:var(--muted)">= needs to be added</span>
+      </div>
+    </div>
+
+    <div class="grid cols-2" style="gap:20px;">
+
+      <div>
+        <h3 style="margin-bottom:8px;">User</h3>
+        <table class="table">
+          <tr><th>Field</th><th>Type</th><th>Status</th><th>Notes</th></tr>
+          <tr><td class="field-name">id</td><td class="field-type">Integer PK</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">Primary key</td></tr>
+          <tr><td class="field-name">username</td><td class="field-type">String(50)</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">Unique login name</td></tr>
+          <tr><td class="field-name">display_name</td><td class="field-type">String(100)</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">"Andrew", shown in UI</td></tr>
+          <tr><td class="field-name">password_hash</td><td class="field-type">String(255)</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">werkzeug hashed</td></tr>
+          <tr><td class="field-name">avatar_color</td><td class="field-type">String(20)</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">Hex or named color</td></tr>
+          <tr><td class="field-name">is_admin</td><td class="field-type">Boolean</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">Can manage scraper/boundary</td></tr>
+          <tr><td class="field-name">created_at</td><td class="field-type">DateTime</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+        </table>
+
+        <h3 style="margin:16px 0 8px;">UserRating</h3>
+        <table class="table">
+          <tr><th>Field</th><th>Type</th><th>Status</th><th>Notes</th></tr>
+          <tr><td class="field-name">id</td><td class="field-type">Integer PK</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">user_id</td><td class="field-type">FK → User</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">apartment_id</td><td class="field-type">FK → Apartment</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">stars</td><td class="field-type">Integer (1–5)</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">null = unrated</td></tr>
+          <tr><td class="field-name">category</td><td class="field-type">String(10)</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">yes/maybe/no/unsorted</td></tr>
+          <tr><td class="field-name">is_favorite</td><td class="field-type">Boolean</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">Hearted/starred</td></tr>
+          <tr><td class="field-name">notes</td><td class="field-type">Text</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">Private per-user note</td></tr>
+          <tr><td class="field-name">updated_at</td><td class="field-type">DateTime</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+        </table>
+
+        <h3 style="margin:16px 0 8px;">Comment</h3>
+        <table class="table">
+          <tr><th>Field</th><th>Type</th><th>Status</th><th>Notes</th></tr>
+          <tr><td class="field-name">id</td><td class="field-type">Integer PK</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">user_id</td><td class="field-type">FK → User</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">apartment_id</td><td class="field-type">FK → Apartment</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">body</td><td class="field-type">Text</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">The comment text</td></tr>
+          <tr><td class="field-name">created_at</td><td class="field-type">DateTime</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+        </table>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:8px;">Apartment (existing + changes)</h3>
+        <table class="table">
+          <tr><th>Field</th><th>Type</th><th>Status</th><th>Notes</th></tr>
+          <tr><td class="field-name">id, source_id, source_url</td><td class="field-type">—</td><td><span class="field-exists">Exists</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">address, city, state, zip</td><td class="field-type">—</td><td><span class="field-exists">Exists</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">neighborhood</td><td class="field-type">—</td><td><span class="field-exists">Exists</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">bedrooms, bathrooms, sqft, rent</td><td class="field-type">—</td><td><span class="field-exists">Exists</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">available_from/to, no_fee, pet_friendly</td><td class="field-type">—</td><td><span class="field-exists">Exists</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">latitude, longitude, within_boundary</td><td class="field-type">—</td><td><span class="field-exists">Exists</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">images_json</td><td class="field-type">—</td><td><span class="field-exists">Exists</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">rank, list_category, notes</td><td class="field-type">—</td><td><span class="badge b-yellow" style="font-size:10px;">Migrate</span></td><td style="color:var(--muted);font-size:12px;">Move to UserRating, keep for compat</td></tr>
+          <tr><td class="field-name">parking</td><td class="field-type">Boolean</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">If scraped</td></tr>
+          <tr><td class="field-name">laundry</td><td class="field-type">String(20)</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">in-unit/building/none</td></tr>
+          <tr><td class="field-name">amenities_json</td><td class="field-type">Text</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">Flexible extras list</td></tr>
+        </table>
+
+        <h3 style="margin:16px 0 8px;">UserDestination</h3>
+        <table class="table">
+          <tr><th>Field</th><th>Type</th><th>Status</th><th>Notes</th></tr>
+          <tr><td class="field-name">id</td><td class="field-type">Integer PK</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">user_id</td><td class="field-type">FK → User</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">label</td><td class="field-type">String(50)</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">"Work", "Gym", etc.</td></tr>
+          <tr><td class="field-name">address</td><td class="field-type">String(255)</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">Free-text address</td></tr>
+          <tr><td class="field-name">latitude, longitude</td><td class="field-type">Float</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">Geocoded from address</td></tr>
+          <tr><td class="field-name">mode</td><td class="field-type">String(10)</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">walk/transit/bike/drive</td></tr>
+          <tr><td class="field-name">is_primary</td><td class="field-type">Boolean</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">Show this one on cards</td></tr>
+        </table>
+
+        <h3 style="margin:16px 0 8px;">CommuteCache</h3>
+        <table class="table">
+          <tr><th>Field</th><th>Type</th><th>Status</th><th>Notes</th></tr>
+          <tr><td class="field-name">id</td><td class="field-type">Integer PK</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">user_id</td><td class="field-type">FK → User</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">apartment_id</td><td class="field-type">FK → Apartment</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">destination_id</td><td class="field-type">FK → UserDest</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">minutes</td><td class="field-type">Float</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">Cached commute time</td></tr>
+          <tr><td class="field-name">distance_miles</td><td class="field-type">Float</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;"></td></tr>
+          <tr><td class="field-name">computed_at</td><td class="field-type">DateTime</td><td><span class="field-new">New</span></td><td style="color:var(--muted);font-size:12px;">For staleness check</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TECH STACK -->
+  <div class="panel" id="tab-techstack">
+    <h2>Tech Stack Recommendations</h2>
+    <p class="section-desc">Your existing stack (Flask + SQLite + Leaflet) is a great foundation. The additions below are all lightweight and keep complexity low.</p>
+
+    <div class="tech-stack" style="margin-bottom:24px;">
+      <div class="tech-row"><div class="tech-layer">Backend</div><div class="tech-name" style="color:var(--accent)">Flask (existing)</div><div class="tech-why">Keep it — simple, already wired up with SQLAlchemy and the scraper</div></div>
+      <div class="tech-row"><div class="tech-layer">Database</div><div class="tech-name" style="color:var(--accent)">SQLite (existing)</div><div class="tech-why">Fine for 3 users. Migrate to Postgres later if needed</div></div>
+      <div class="tech-row"><div class="tech-layer">Auth</div><div class="tech-name" style="color:var(--green)">Flask-Login</div><div class="tech-why">Minimal, session-based, no JWT complexity. pip install flask-login</div></div>
+      <div class="tech-row"><div class="tech-layer">Maps</div><div class="tech-name" style="color:var(--accent)">Leaflet.js (existing)</div><div class="tech-why">Already in the app. Add GeoJSON layers for MBTA routes</div></div>
+      <div class="tech-row"><div class="tech-layer">MBTA Data</div><div class="tech-name" style="color:var(--green)">Static GeoJSON from MBTA Open Data</div><div class="tech-why">Free, no key needed, download once. URL: https://github.com/mbta/gtfs-documentation</div></div>
+      <div class="tech-row"><div class="tech-layer">Commute API</div><div class="tech-name" style="color:var(--yellow)">Google Maps Distance Matrix OR OpenRouteService</div><div class="tech-why">Google is most accurate (esp. transit). ORS is free/open-source. Even haversine works as fallback for walking rough estimate</div></div>
+      <div class="tech-row"><div class="tech-layer">Geocoding</div><div class="tech-name" style="color:var(--green)">Nominatim (OpenStreetMap)</div><div class="tech-why">Free geocoding for work addresses. No key needed. pip install geopy</div></div>
+      <div class="tech-row"><div class="tech-layer">Frontend</div><div class="tech-name" style="color:var(--accent)">Vanilla JS + Jinja2 (existing)</div><div class="tech-why">No React needed. Keep it simple. Use fetch() for API calls, no build toolchain</div></div>
+      <div class="tech-row"><div class="tech-layer">CSS</div><div class="tech-name" style="color:var(--accent)">Custom dark CSS (existing)</div><div class="tech-why">Keep current dark theme. Add CSS variables for consistency. No framework needed</div></div>
+      <div class="tech-row"><div class="tech-layer">Images</div><div class="tech-name" style="color:var(--accent)">Local static files (existing)</div><div class="tech-why">Already working. Keep scraped images in static/images/apartments/</div></div>
+    </div>
+
+    <div class="divider"></div>
+    <h3>Optional Upgrades (if project grows)</h3>
+    <div class="grid cols-3">
+      <div class="card">
+        <div class="card-header"><div class="icon i-purple">🔄</div><span class="card-title">Real-time Updates</span></div>
+        <p>Add Flask-SocketIO or Server-Sent Events so when one roommate votes, others see it live without refreshing. Nice but not MVP.</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="icon i-blue">📱</div><span class="card-title">Mobile PWA</span></div>
+        <p>Add a manifest.json and service worker to make the site installable on phones. Useful when you're out touring apartments.</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="icon i-green">🗄️</div><span class="card-title">Postgres (Later)</span></div>
+        <p>If SQLite starts to feel limiting (lots of concurrent writes), migrate to Postgres. SQLAlchemy makes this a config change.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASES -->
+  <div class="panel" id="tab-phases">
+    <h2>Build Phases</h2>
+    <p class="section-desc">A suggested order of implementation. Each phase is independently useful — don't need to finish all of them to have something valuable.</p>
+
+    <div class="timeline">
+      <div class="phase">
+        <div class="phase-left">
+          <div class="phase-dot" style="background:linear-gradient(135deg,#3fb950,#39c5cf)">1</div>
+          <div class="phase-line"></div>
+        </div>
+        <div class="phase-content">
+          <div class="phase-title">Phase 1 — Polish the Existing UI <span class="badge b-green" style="margin-left:8px;vertical-align:middle;">Start Here</span></div>
+          <div class="phase-desc">Make the current single-user listing view look great before adding complexity. Dark theme, grid/list toggle, filter sidebar, sort, card design with image + vote buttons. This is the core of the app and everything else builds on it.</div>
+          <div class="phase-tasks">
+            <span class="phase-task">Redesign index.html with proper dark theme</span>
+            <span class="phase-task">Grid / List / Map view toggle</span>
+            <span class="phase-task">Filter sidebar (rent, beds, no-fee, pets, neighborhood)</span>
+            <span class="phase-task">Sort bar (price, date, rating)</span>
+            <span class="phase-task">Apartment card with hero image + vote buttons</span>
+            <span class="phase-task">Apartment detail page (full gallery, all fields)</span>
+            <span class="phase-task">MBTA overlay toggles on map</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-left">
+          <div class="phase-dot" style="background:linear-gradient(135deg,#58a6ff,#bc8cff)">2</div>
+          <div class="phase-line"></div>
+        </div>
+        <div class="phase-content">
+          <div class="phase-title">Phase 2 — User Accounts & Per-User Ratings</div>
+          <div class="phase-desc">Add Flask-Login, create User and UserRating models. Each person logs in and their votes/ratings are stored separately. Add the group consensus indicators to cards. Migrate existing rank/list_category/notes to be per-user.</div>
+          <div class="phase-tasks">
+            <span class="phase-task">User model + Flask-Login</span>
+            <span class="phase-task">Login / logout pages</span>
+            <span class="phase-task">UserRating model (stars, category, favorite, notes)</span>
+            <span class="phase-task">Per-user vote API endpoints</span>
+            <span class="phase-task">Group consensus display on cards</span>
+            <span class="phase-task">Personal favorites page</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-left">
+          <div class="phase-dot" style="background:linear-gradient(135deg,#d29922,#f78166)">3</div>
+          <div class="phase-line"></div>
+        </div>
+        <div class="phase-content">
+          <div class="phase-title">Phase 3 — Comments</div>
+          <div class="phase-desc">Add the Comment model and a comment thread to the apartment detail page. This is how roommates discuss specific listings without needing a group chat.</div>
+          <div class="phase-tasks">
+            <span class="phase-task">Comment model</span>
+            <span class="phase-task">Comment thread UI on detail page</span>
+            <span class="phase-task">Comment count badge on listing cards</span>
+            <span class="phase-task">POST /api/apartments/:id/comments endpoint</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-left">
+          <div class="phase-dot" style="background:linear-gradient(135deg,#bc8cff,#58a6ff)">4</div>
+          <div class="phase-line"></div>
+        </div>
+        <div class="phase-content">
+          <div class="phase-title">Phase 4 — Commute Times & Personal Destinations</div>
+          <div class="phase-desc">Each user sets their work address. The app geocodes it and calculates commute times to every apartment. Results are cached. Walk and T times are shown on cards and filterable in the sidebar.</div>
+          <div class="phase-tasks">
+            <span class="phase-task">UserDestination model</span>
+            <span class="phase-task">Profile page — add/edit destinations</span>
+            <span class="phase-task">Geocoding via Nominatim (geopy)</span>
+            <span class="phase-task">CommuteCache model</span>
+            <span class="phase-task">Commute calculation (haversine or Google API)</span>
+            <span class="phase-task">Walk/T time on apartment cards</span>
+            <span class="phase-task">Commute filter in sidebar</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-left">
+          <div class="phase-dot" style="background:linear-gradient(135deg,#39c5cf,#3fb950)">5</div>
+          <div class="phase-line"></div>
+        </div>
+        <div class="phase-content">
+          <div class="phase-title">Phase 5 — Compare View & Polish</div>
+          <div class="phase-desc">Side-by-side apartment comparison. Each user's work addresses shown on the map. Final UX polish — animations, loading states, empty states, responsive layout for mobile.</div>
+          <div class="phase-tasks">
+            <span class="phase-task">Compare page (up to 4 apartments)</span>
+            <span class="phase-task">Work address pins on map</span>
+            <span class="phase-task">Loading skeletons on card grid</span>
+            <span class="phase-task">Empty state design</span>
+            <span class="phase-task">Mobile responsive layout</span>
+            <span class="phase-task">PWA manifest (optional)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase-left">
+          <div class="phase-dot" style="background:var(--bg4);border:2px solid var(--border)">∞</div>
+        </div>
+        <div class="phase-content">
+          <div class="phase-title" style="color:var(--muted)">V2 Ideas (Future)</div>
+          <div class="phase-desc" style="color:var(--muted)">Real-time updates via WebSockets, custom per-user stat fields, tour scheduling / calendar integration, notification when new listings match saved filters, export shortlist to PDF.</div>
+          <div class="phase-tasks">
+            <span class="phase-task" style="color:var(--muted)">Real-time votes via SocketIO</span>
+            <span class="phase-task" style="color:var(--muted)">Custom stat fields per user</span>
+            <span class="phase-task" style="color:var(--muted)">Filter presets</span>
+            <span class="phase-task" style="color:var(--muted)">Export to PDF</span>
+            <span class="phase-task" style="color:var(--muted)">Tour calendar</span>
+            <span class="phase-task" style="color:var(--muted)">Email alerts for new listings</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- .content -->
+</div><!-- .shell -->
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => { p.classList.remove('active'); p.style.display='none'; });
+  const tabs = document.querySelectorAll('.tab');
+  const tabIds = ['overview','wireframe','features','users','map','datamodel','techstack','phases'];
+  const idx = tabIds.indexOf(id);
+  if (idx >= 0) tabs[idx].classList.add('active');
+  const panel = document.getElementById('tab-'+id);
+  if (panel) { panel.style.display='block'; panel.classList.add('active'); }
+}
+// init
+document.querySelectorAll('.panel').forEach(p => p.style.display='none');
+document.getElementById('tab-overview').style.display='block';
+</script>
+</body>
+</html>
