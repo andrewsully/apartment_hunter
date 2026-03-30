@@ -1,26 +1,43 @@
 """
 Metro Realty Corp scraper
 =========================
-Pulls listings from metrorealtycorp.com, geocodes addresses, downloads images,
-and stores everything in the local SQLite database.
+Pulls listings from metrorealtycorp.com using the `ygl-*` class structure
+discovered by inspect_structure.py.
 
-Run manually (sparingly — once a day at most) or call run_scrape() via the
-/api/scrape endpoint in app.py.
+Structure summary
+-----------------
+Search results page:
+  Cards:          .ygl-listing-preview
+  Image:          .ygl-listing-preview-image img
+  Stats:          .ygl-listing-preview-bottom ul li  (price / beds / baths / sqft)
+  Address lines:  .ygl-listing-preview-bottom p  (first = street, second = city+zip)
+  Detail link:    .ygl-listing-preview-container a[href]  (first occurrence)
+  Exclusive:      .ygl-exclusive-badge
+  Pagination:     &page_index=N  (N starts at 1)
 
-Usage:
+Detail page:
+  Address:        .ygl-single-listing-details-left h1
+  Price:          .ygl-single-listing-details-left h2  ("... | $4100/month")
+  Detail fields:  .ygl-single-listing-details-left ul li.xcol  (key: strong, val: span)
+                  Includes: Neighborhood, Available Date
+  Beds/baths:     .ygl-single-listing-details-keys ul li  (key: strong, val: span)
+  Photos:         img[src*="ygl-photos.s3"]
+
+Run manually (once a day at most):
     python -m scraper.metro_scraper
+Or via the web UI:
+    POST /api/scrape
 """
 
 import os
 import re
 import json
 import time
-import hashlib
 import logging
 import requests
 from pathlib import Path
 from datetime import datetime
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
@@ -45,22 +62,54 @@ HEADERS = {
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/124.0.0.0 Safari/537.36"
     ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Cache-Control": "max-age=0",
 }
 
 IMAGE_DIR = Path(__file__).parent.parent / "static" / "images" / "apartments"
 IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 
-# Polite delay between requests (seconds)
-REQUEST_DELAY = 2.5
+REQUEST_DELAY = 3.0   # seconds between page requests
+GEOCODE_DELAY = 1.2   # seconds between geocoding requests (Nominatim policy: 1/sec)
+
+
+# ── HTTP session (reuse connection, share cookies) ─────────────────────────────
+
+session = requests.Session()
+session.headers.update(HEADERS)
+
+
+def fetch(url: str, retries: int = 2) -> str:
+    """Fetch a URL with retries on 429/5xx."""
+    for attempt in range(retries + 1):
+        try:
+            resp = session.get(url, timeout=20)
+            if resp.status_code == 429:
+                wait = int(resp.headers.get("Retry-After", 15))
+                logger.warning("Rate limited — waiting %ds", wait)
+                time.sleep(wait)
+                continue
+            resp.raise_for_status()
+            return resp.text
+        except requests.RequestException as e:
+            if attempt == retries:
+                raise
+            logger.warning("Fetch failed (%s), retrying…", e)
+            time.sleep(5)
+    return ""
 
 
 # ── Boundary helpers ───────────────────────────────────────────────────────────
 
-def point_in_polygon(lat: float, lng: float, polygon: list[list[float]]) -> bool:
-    """Ray-casting algorithm for point-in-polygon test.
-    polygon is a list of [lat, lng] pairs.
-    """
+def point_in_polygon(lat: float, lng: float, polygon: list) -> bool:
+    """Ray-casting algorithm. polygon is [[lat, lng], ...]."""
     n = len(polygon)
     inside = False
     x, y = lng, lat
@@ -76,33 +125,33 @@ def point_in_polygon(lat: float, lng: float, polygon: list[list[float]]) -> bool
 
 # ── Geocoding ──────────────────────────────────────────────────────────────────
 
-def geocode_address(address: str, city: str = "Boston", state: str = "MA") -> tuple[float | None, float | None]:
-    """Use OpenStreetMap Nominatim (free, no API key) to geocode an address.
-    Respects the 1 req/sec usage policy.
-    """
-    query = f"{address}, {city}, {state}"
+def geocode_address(address: str) -> tuple:
+    """Geocode via OpenStreetMap Nominatim (free, ~1 req/sec limit)."""
     url = "https://nominatim.openstreetmap.org/search"
-    params = {"q": query, "format": "json", "limit": 1}
-    geocode_headers = {**HEADERS, "Referer": "https://github.com/andrewsully/apartment_hunter"}
+    params = {"q": address, "format": "json", "limit": 1, "countrycodes": "us"}
+    headers = {
+        **HEADERS,
+        "Referer": "https://github.com/andrewsully/apartment_hunter",
+    }
     try:
-        time.sleep(1.1)  # Nominatim rate limit
-        resp = requests.get(url, params=params, headers=geocode_headers, timeout=10)
+        time.sleep(GEOCODE_DELAY)
+        resp = requests.get(url, params=params, headers=headers, timeout=10)
         resp.raise_for_status()
         results = resp.json()
         if results:
             return float(results[0]["lat"]), float(results[0]["lon"])
     except Exception as e:
-        logger.warning("Geocoding failed for %s: %s", query, e)
+        logger.warning("Geocoding failed for %r: %s", address, e)
     return None, None
 
 
 # ── Image download ─────────────────────────────────────────────────────────────
 
 def download_image(image_url: str, source_id: str, idx: int) -> str | None:
-    """Download an image and store it locally. Returns the local relative path."""
+    """Download one image and save locally. Returns the web-accessible path."""
     try:
-        time.sleep(REQUEST_DELAY)
-        resp = requests.get(image_url, headers=HEADERS, timeout=15, stream=True)
+        time.sleep(1.0)
+        resp = session.get(image_url, timeout=15, stream=True)
         resp.raise_for_status()
         ext = image_url.split(".")[-1].split("?")[0].lower()
         if ext not in ("jpg", "jpeg", "png", "webp"):
@@ -112,210 +161,250 @@ def download_image(image_url: str, source_id: str, idx: int) -> str | None:
         with open(path, "wb") as f:
             for chunk in resp.iter_content(8192):
                 f.write(chunk)
+        logger.debug("Saved image: %s", filename)
         return f"/images/apartments/{filename}"
     except Exception as e:
         logger.warning("Image download failed %s: %s", image_url, e)
         return None
 
 
-# ── Parsing ────────────────────────────────────────────────────────────────────
+# ── Search page parser ─────────────────────────────────────────────────────────
 
-def parse_listing_card(card) -> dict | None:
-    """Parse a single listing card from the search results page."""
+def parse_card(card) -> dict | None:
+    """Parse one .ygl-listing-preview card from the search results."""
     try:
-        link_el = card.select_one("a[href]")
+        # Detail URL & source ID (use URL slug as stable identifier)
+        link_el = card.select_one(".ygl-listing-preview-container > div > a, "
+                                   ".ygl-listing-preview-image a")
         if not link_el:
             return None
-        detail_url = urljoin(BASE_URL, link_el["href"])
-        source_id = hashlib.md5(detail_url.encode()).hexdigest()[:12]
+        detail_url = link_el.get("href", "")
+        if not detail_url.startswith("http"):
+            detail_url = urljoin(BASE_URL, detail_url)
+        source_id = urlparse(detail_url).path.strip("/").split("/")[-1]
 
-        rent_el = card.select_one(".rent, [class*='rent'], [class*='price']")
-        beds_el = card.select_one(".beds, [class*='beds'], [class*='bed']")
-        baths_el = card.select_one(".baths, [class*='baths'], [class*='bath']")
-        addr_el = card.select_one("address, [class*='address'], [class*='street']")
-        sqft_el = card.select_one("[class*='sqft'], [class*='sq']")
-        img_el = card.select_one("img[src]")
+        # Thumbnail
+        img_el = card.select_one(".ygl-listing-preview-image img")
+        thumbnail_url = img_el["src"] if img_el else None
 
-        def extract_num(el):
-            if not el:
-                return None
-            txt = re.sub(r"[^\d.]", "", el.get_text())
-            try:
-                return float(txt) if txt else None
-            except ValueError:
-                return None
+        # Stats list: Price / Beds / Baths / Sq Ft
+        stats: dict[str, str] = {}
+        for li in card.select(".ygl-listing-preview-bottom ul li"):
+            val_el  = li.select_one("strong")
+            key_el  = li.select_one("span")
+            if val_el and key_el:
+                stats[key_el.get_text(strip=True).lower()] = val_el.get_text(strip=True)
+
+        def to_num(s):
+            s = re.sub(r"[^\d.]", "", s or "")
+            try: return float(s) if s else None
+            except ValueError: return None
+
+        rent_str  = stats.get("month", "")
+        rent      = int(to_num(rent_str) or 0)
+        bedrooms  = to_num(stats.get("beds"))
+        bathrooms = to_num(stats.get("baths"))
+        raw_sqft  = to_num(stats.get("sq ft"))
+        sqft      = int(raw_sqft) if raw_sqft and raw_sqft < 9000 else None  # 9999 = unknown
+
+        # Address paragraphs in .ygl-listing-preview-bottom
+        bottom = card.select_one(".ygl-listing-preview-bottom")
+        addr_paras = bottom.select("p") if bottom else []
+        street  = addr_paras[0].get_text(strip=True) if len(addr_paras) > 0 else ""
+        cityzip = addr_paras[1].get_text(strip=True) if len(addr_paras) > 1 else "Boston MA"
+        address = f"{street}, {cityzip}" if street else cityzip
+
+        # Badges
+        no_fee   = bool(card.select_one(".ygl-no-fee-badge, [class*='no-fee']") or
+                        card.find(string=re.compile(r"no.?fee", re.I)))
+        exclusive = bool(card.select_one(".ygl-exclusive-badge"))
 
         return {
-            "source_id": source_id,
-            "source_url": detail_url,
-            "address": addr_el.get_text(strip=True) if addr_el else "",
-            "rent": int(extract_num(rent_el) or 0),
-            "bedrooms": extract_num(beds_el),
-            "bathrooms": extract_num(baths_el),
-            "sqft": int(extract_num(sqft_el) or 0) or None,
-            "thumbnail_url": img_el["src"] if img_el else None,
-            "no_fee": bool(card.find(string=re.compile(r"no.?fee", re.I))),
+            "source_id":    source_id,
+            "source_url":   detail_url,
+            "address":      address,
+            "rent":         rent,
+            "bedrooms":     bedrooms,
+            "bathrooms":    bathrooms,
+            "sqft":         sqft,
+            "thumbnail_url": thumbnail_url,
+            "no_fee":       no_fee,
+            "exclusive":    exclusive,
         }
     except Exception as e:
         logger.warning("Failed to parse card: %s", e)
         return None
 
 
-def scrape_detail_page(url: str) -> dict:
-    """Fetch a listing detail page for extra info (images, availability, etc.)."""
-    extra = {"images_raw": [], "available_from": None, "available_to": None, "neighborhood": None}
+# ── Detail page parser ─────────────────────────────────────────────────────────
+
+def scrape_detail(url: str) -> dict:
+    """Fetch listing detail page and extract extra fields + all photos."""
+    extra = {
+        "address_full":   None,
+        "neighborhood":   None,
+        "available_from": None,
+        "zip_code":       None,
+        "images_raw":     [],
+    }
     try:
         time.sleep(REQUEST_DELAY)
-        resp = requests.get(url, headers=HEADERS, timeout=15)
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, "lxml")
+        html = fetch(url)
+        soup = BeautifulSoup(html, "lxml")
 
-        # All images
-        for img in soup.select("img[src]"):
-            src = img["src"]
-            if any(k in src.lower() for k in ("listing", "property", "photo", "apt", "unit")):
+        # Full address from h1
+        h1 = soup.select_one(".ygl-single-listing-details-left h1")
+        if h1:
+            extra["address_full"] = h1.get_text(strip=True)
+            # Extract zip from address
+            m = re.search(r"\b(\d{5})\b", extra["address_full"])
+            if m:
+                extra["zip_code"] = m.group(1)
+
+        # Detail key/value pairs (Neighborhood, Available Date, etc.)
+        for li in soup.select(".ygl-single-listing-details-left ul li.xcol"):
+            key = li.select_one("strong")
+            val = li.select_one("span")
+            if not key or not val:
+                continue
+            k = key.get_text(strip=True).lower()
+            v = val.get_text(strip=True)
+            if "neighborhood" in k:
+                extra["neighborhood"] = v
+            elif "available" in k:
+                extra["available_from"] = v
+
+        # Listing photos (hosted on ygl-photos S3)
+        for img in soup.select("img[src*='ygl-photos']"):
+            src = img.get("src", "")
+            if src and src not in extra["images_raw"]:
                 extra["images_raw"].append(src)
 
-        # Availability text
-        avail_text = soup.find(string=re.compile(r"avail", re.I))
-        if avail_text:
-            dates = re.findall(r"\d{1,2}/\d{1,2}/\d{2,4}", avail_text)
-            if len(dates) >= 1:
-                extra["available_from"] = dates[0]
-            if len(dates) >= 2:
-                extra["available_to"] = dates[1]
-
-        # Neighborhood
-        neigh_el = soup.select_one("[class*='neighborhood'], [class*='area']")
-        if neigh_el:
-            extra["neighborhood"] = neigh_el.get_text(strip=True)
-
     except Exception as e:
-        logger.warning("Detail page failed %s: %s", url, e)
+        logger.warning("Detail scrape failed %s: %s", url, e)
+
     return extra
 
 
 # ── Main scrape ────────────────────────────────────────────────────────────────
 
 def run_scrape(boundary: dict | None = None) -> int:
-    """Scrape Metro Realty, geocode, filter by boundary, store in DB.
-    Returns number of new listings added.
-    """
-    # Import here to avoid circular imports (Flask app context needed)
+    """Full scrape: search results → detail pages → geocode → store in DB."""
     from models import db, Apartment
-    from flask import current_app
 
-    logger.info("Starting Metro Realty scrape — %s", datetime.utcnow().isoformat())
+    logger.info("=== Metro Realty scrape started — %s ===", datetime.utcnow().isoformat())
     new_count = 0
+    boundary_latlngs = (boundary or {}).get("latlngs")
+
     page = 1
-
-    boundary_latlngs = boundary.get("latlngs") if boundary else None
-
     while True:
-        url = SEARCH_URL + (f"&paged={page}" if page > 1 else "")
-        logger.info("Fetching page %d: %s", page, url)
+        url = SEARCH_URL + (f"&page_index={page}" if page > 1 else "")
+        logger.info("Fetching search results page %d", page)
+
         try:
             time.sleep(REQUEST_DELAY)
-            resp = requests.get(url, headers=HEADERS, timeout=20)
-            resp.raise_for_status()
+            html = fetch(url)
         except Exception as e:
-            logger.error("Failed to fetch listing page %d: %s", page, e)
+            logger.error("Cannot fetch page %d: %s", page, e)
             break
 
-        soup = BeautifulSoup(resp.text, "lxml")
-
-        # Try common card selectors — adjust based on actual site structure
-        cards = (
-            soup.select(".listing-card")
-            or soup.select(".property-card")
-            or soup.select("[class*='listing']")
-            or soup.select("article")
-        )
+        soup = BeautifulSoup(html, "lxml")
+        cards = soup.select(".ygl-listing-preview")
+        logger.info("  Found %d cards on page %d", len(cards), page)
 
         if not cards:
-            logger.info("No cards found on page %d — stopping.", page)
             break
 
         for card in cards:
-            listing = parse_listing_card(card)
-            if not listing or not listing["address"]:
+            listing = parse_card(card)
+            if not listing or not listing.get("source_id"):
                 continue
 
-            # Skip if already in DB
-            existing = Apartment.query.filter_by(source_id=listing["source_id"]).first()
-            if existing:
+            # Skip duplicates
+            if Apartment.query.filter_by(source_id=listing["source_id"]).first():
                 logger.debug("Already stored: %s", listing["source_id"])
                 continue
 
+            # Detail page
+            detail = scrape_detail(listing["source_url"])
+            full_addr = detail.get("address_full") or listing["address"]
+
             # Geocode
-            lat, lng = geocode_address(listing["address"])
-            listing["latitude"] = lat
+            lat, lng = geocode_address(full_addr)
+            listing["latitude"]  = lat
             listing["longitude"] = lng
 
-            # Boundary check
+            # Boundary filter
             within = None
             if lat and lng and boundary_latlngs:
                 within = point_in_polygon(lat, lng, boundary_latlngs)
             listing["within_boundary"] = within
 
-            # Scrape detail page for images & extras
-            detail = scrape_detail_page(listing["source_url"])
-            listing.update({k: v for k, v in detail.items() if k != "images_raw"})
-
-            # Download images
+            # Download images (cap at 12)
             local_images = []
-            for i, img_url in enumerate(detail.get("images_raw", [])[:8]):  # cap at 8
-                local_path = download_image(img_url, listing["source_id"], i)
-                if local_path:
-                    local_images.append(local_path)
-            # Fall back to thumbnail
+            for i, img_url in enumerate(detail.get("images_raw", [])[:12]):
+                path = download_image(img_url, listing["source_id"], i)
+                if path:
+                    local_images.append(path)
+            # Fallback to thumbnail from search results card
             if not local_images and listing.get("thumbnail_url"):
-                local_path = download_image(listing["thumbnail_url"], listing["source_id"], 0)
-                if local_path:
-                    local_images.append(local_path)
+                path = download_image(listing["thumbnail_url"], listing["source_id"], 0)
+                if path:
+                    local_images.append(path)
 
             # Persist
             apt = Apartment(
-                source_id=listing["source_id"],
-                source_url=listing["source_url"],
-                address=listing["address"],
-                bedrooms=listing.get("bedrooms"),
-                bathrooms=listing.get("bathrooms"),
-                sqft=listing.get("sqft"),
-                rent=listing.get("rent"),
-                no_fee=listing.get("no_fee", False),
-                available_from=listing.get("available_from"),
-                available_to=listing.get("available_to"),
-                neighborhood=listing.get("neighborhood"),
-                latitude=lat,
-                longitude=lng,
-                within_boundary=within,
-                images_json=json.dumps(local_images),
+                source_id       = listing["source_id"],
+                source_url      = listing["source_url"],
+                address         = full_addr,
+                zip_code        = detail.get("zip_code"),
+                neighborhood    = detail.get("neighborhood"),
+                bedrooms        = listing["bedrooms"],
+                bathrooms       = listing["bathrooms"],
+                sqft            = listing["sqft"],
+                rent            = listing["rent"],
+                no_fee          = listing["no_fee"],
+                available_from  = detail.get("available_from"),
+                latitude        = lat,
+                longitude       = lng,
+                within_boundary = within,
+                images_json     = json.dumps(local_images),
             )
             db.session.add(apt)
             db.session.commit()
             new_count += 1
-            logger.info("Stored: %s — $%d — within_boundary=%s", listing["address"], listing["rent"], within)
+            logger.info(
+                "  + %-50s $%d  within=%s  images=%d",
+                full_addr[:50], listing["rent"], within, len(local_images)
+            )
 
-        # Check for next page
-        next_link = soup.select_one("a[class*='next'], .next a, [rel='next']")
+        # Check for next page link
+        next_link = soup.select_one(".ygl-pagination a[href*='page_index']:-soup-contains('Next'), "
+                                     ".ygl-pagination a[rel='next']")
         if not next_link:
-            break
+            # Also check if the page had a page_index=N+1 link at all
+            next_page_url = f"&page_index={page + 1}"
+            has_next = any(
+                next_page_url in (a.get("href", "") or "")
+                for a in soup.select(".ygl-pagination a")
+            )
+            if not has_next:
+                logger.info("No more pages after page %d", page)
+                break
         page += 1
 
-    logger.info("Scrape complete. New listings: %d", new_count)
+    logger.info("=== Scrape complete. New listings added: %d ===", new_count)
     return new_count
 
 
 if __name__ == "__main__":
     import sys
     sys.path.insert(0, str(Path(__file__).parent.parent))
-    from app import app, db
-    from models import Apartment
 
+    from app import app, db
     with app.app_context():
         db.create_all()
         boundary_file = Path(__file__).parent.parent / "data" / "boundary.json"
         boundary = json.loads(boundary_file.read_text()) if boundary_file.exists() else None
         count = run_scrape(boundary)
-        print(f"Done. New listings added: {count}")
+        print(f"\nDone. New listings added: {count}")
