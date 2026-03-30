@@ -9,7 +9,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///data/apartments.db"
+_db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "apartments.db")
+os.makedirs(os.path.dirname(_db_path), exist_ok=True)
+app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{_db_path}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-in-prod")
 
@@ -128,4 +130,4 @@ if __name__ == "__main__":
     with app.app_context():
         os.makedirs("data", exist_ok=True)
         db.create_all()
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)
