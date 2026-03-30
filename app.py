@@ -33,14 +33,25 @@ def load_boundary():
 
 @app.route("/")
 def index():
+    """Main apartment browser — loads with boundary applied."""
     boundary = load_boundary()
-    return render_template("index.html", boundary=json.dumps(boundary))
+    total = Apartment.query.count()
+    active = Apartment.query.filter_by(active=True, within_boundary=True).count()
+    last = Apartment.query.order_by(Apartment.scraped_at.desc()).first()
+    last_scraped = last.scraped_at.isoformat() if last else None
+    return render_template(
+        "index.html",
+        boundary=json.dumps(boundary),
+        total_apartments=active,
+        last_scraped=last_scraped,
+    )
 
 
-@app.route("/apartments")
-def apartments_page():
+@app.route("/admin")
+def admin():
+    """Admin panel: boundary editor + scrape controls. Not linked from main UI."""
     boundary = load_boundary()
-    return render_template("apartments.html", boundary=json.dumps(boundary))
+    return render_template("admin.html", boundary=json.dumps(boundary))
 
 
 # ---------------------------------------------------------------------------
@@ -80,8 +91,12 @@ def get_apartments():
 def rank_apartment(apt_id):
     data = request.get_json()
     apt = Apartment.query.get_or_404(apt_id)
-    apt.rank = data.get("rank")
-    apt.list_category = data.get("list_category", apt.list_category)
+    if "rank" in data:
+        apt.rank = data["rank"]
+    if "list_category" in data:
+        apt.list_category = data["list_category"]
+    if "notes" in data:
+        apt.notes = data["notes"]
     db.session.commit()
     return jsonify({"success": True})
 

@@ -3,13 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Apartment Hunter — Boundary Designer</title>
+  <title>Apartment Hunter — Boston</title>
 
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -21,6 +19,7 @@
     :root {
       --bg:       #0f1117;
       --surface:  #1a1d27;
+      --surface2: #22263a;
       --border:   #2a2d3a;
       --accent:   #6366f1;
       --accent2:  #22d3ee;
@@ -29,13 +28,70 @@
       --danger:   #ef4444;
       --text:     #e2e8f0;
       --muted:    #64748b;
-      --sidebar:  300px;
+      --sidebar:  340px;
     }
 
     html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
 
     /* ── Layout ── */
-    #app { display: flex; height: 100vh; }
+    #app { display: flex; height: 100vh; flex-direction: column; }
+
+    /* ── Top bar ── */
+    #topbar {
+      height: 52px;
+      min-height: 52px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 16px;
+      z-index: 100;
+    }
+
+    .app-logo {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .topbar-divider { width: 1px; height: 20px; background: var(--border); }
+
+    .topbar-stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+    .topbar-stat strong { color: var(--text); font-weight: 600; }
+
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+    /* Filter chips */
+    .filter-group { display: flex; align-items: center; gap: 6px; }
+    .filter-label { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .chip {
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+    .chip:hover { border-color: var(--accent); color: var(--text); }
+    .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* ── Body ── */
+    #body { display: flex; flex: 1; overflow: hidden; }
 
     /* ── Sidebar ── */
     #sidebar {
@@ -45,500 +101,684 @@
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      z-index: 1000;
-      overflow-y: auto;
+      overflow: hidden;
     }
 
-    .sidebar-header {
-      padding: 20px 20px 16px;
+    #sidebar-header {
+      padding: 14px 16px 12px;
       border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
 
-    .app-title {
-      font-size: 17px;
-      font-weight: 700;
-      color: var(--text);
-      letter-spacing: -0.3px;
-    }
-
-    .app-subtitle {
+    #apt-count-label {
       font-size: 12px;
-      color: var(--muted);
-      margin-top: 3px;
-    }
-
-    .phase-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 10px;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: 99px;
-      background: rgba(99,102,241,0.15);
-      color: var(--accent);
-      border: 1px solid rgba(99,102,241,0.3);
-      margin-top: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .section {
-      padding: 18px 20px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .section-title {
-      font-size: 11px;
       font-weight: 600;
       color: var(--muted);
       text-transform: uppercase;
-      letter-spacing: 0.8px;
-      margin-bottom: 12px;
+      letter-spacing: 0.6px;
     }
 
-    /* ── Status indicator ── */
-    .status-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      color: var(--text);
-      margin-bottom: 8px;
-    }
-
-    .dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .dot-green  { background: var(--success); box-shadow: 0 0 6px var(--success); }
-    .dot-yellow { background: var(--warn);    box-shadow: 0 0 6px var(--warn); }
-    .dot-gray   { background: var(--muted); }
-
-    /* ── Buttons ── */
-    .btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      width: 100%;
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: all 0.15s;
-      text-decoration: none;
-    }
-
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-    }
-    .btn-primary:hover { background: #4f52e8; transform: translateY(-1px); }
-    .btn-primary:active { transform: translateY(0); }
-    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
-
-    .btn-secondary {
-      background: transparent;
-      color: var(--muted);
+    #sort-select {
+      background: var(--bg);
       border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      cursor: pointer;
     }
-    .btn-secondary:hover { border-color: var(--accent); color: var(--text); }
 
-    .btn-danger {
-      background: transparent;
-      color: var(--danger);
-      border: 1px solid rgba(239,68,68,0.3);
-    }
-    .btn-danger:hover { background: rgba(239,68,68,0.1); }
-
-    .btn + .btn { margin-top: 8px; }
-
-    /* ── Coord list ── */
-    #coord-list {
-      font-size: 12px;
-      color: var(--muted);
-      max-height: 160px;
+    #apt-list {
+      flex: 1;
       overflow-y: auto;
       scrollbar-width: thin;
     }
 
-    .coord-item {
+    /* ── Empty state ── */
+    #empty-state {
       display: flex;
-      justify-content: space-between;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-family: 'Courier New', monospace;
-    }
-    .coord-item:nth-child(odd) { background: rgba(255,255,255,0.03); }
-    .coord-item span { color: var(--text); }
-
-    /* ── Toast ── */
-    #toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%) translateY(80px);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px 20px;
-      font-size: 13px;
-      font-weight: 500;
-      z-index: 9999;
-      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-      display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 10px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-    }
-    #toast.show { transform: translateX(-50%) translateY(0); }
-    #toast.success { border-color: var(--success); color: var(--success); }
-    #toast.error   { border-color: var(--danger);  color: var(--danger); }
-
-    /* ── Info block ── */
-    .info-block {
-      background: rgba(99,102,241,0.08);
-      border: 1px solid rgba(99,102,241,0.2);
-      border-radius: 8px;
-      padding: 12px 14px;
-      font-size: 12px;
-      color: #a5b4fc;
-      line-height: 1.6;
+      justify-content: center;
+      height: 100%;
+      padding: 32px 24px;
+      text-align: center;
+      gap: 12px;
     }
 
-    .info-block strong { color: var(--text); }
-
-    /* ── Steps ── */
-    .step-list { list-style: none; }
-    .step-list li {
-      display: flex;
-      gap: 10px;
-      font-size: 12.5px;
-      color: var(--muted);
-      padding: 5px 0;
-      line-height: 1.5;
-    }
-    .step-num {
-      width: 20px; height: 20px;
-      min-width: 20px;
-      border-radius: 50%;
-      background: var(--border);
-      color: var(--text);
-      font-size: 10px;
-      font-weight: 700;
+    .empty-icon {
+      width: 56px; height: 56px;
+      border-radius: 16px;
+      background: var(--surface2);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-top: 1px;
+      font-size: 24px;
+      margin-bottom: 4px;
     }
+
+    .empty-title { font-size: 15px; font-weight: 600; color: var(--text); }
+    .empty-sub   { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+
+    .btn-outline {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      text-decoration: none;
+      margin-top: 4px;
+      transition: all 0.15s;
+    }
+    .btn-outline:hover { border-color: var(--accent); background: rgba(99,102,241,0.08); }
+
+    /* ── Apartment card ── */
+    .apt-card {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.12s;
+      display: flex;
+      gap: 12px;
+    }
+    .apt-card:hover { background: var(--surface2); }
+    .apt-card.active { background: rgba(99,102,241,0.1); border-left: 3px solid var(--accent); }
+
+    .apt-thumb {
+      width: 72px; height: 56px;
+      min-width: 72px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: var(--surface2);
+    }
+    .apt-thumb-placeholder {
+      width: 72px; height: 56px;
+      min-width: 72px;
+      border-radius: 6px;
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: var(--border);
+    }
+
+    .apt-info { flex: 1; min-width: 0; }
+    .apt-address { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .apt-details { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+    .apt-rent { font-size: 15px; font-weight: 700; color: var(--accent2); margin-top: 4px; }
+    .apt-tags { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+    .tag {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 99px;
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .tag.no-fee { color: var(--success); border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.08); }
+
+    /* ── Category badge on card ── */
+    .cat-badge {
+      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 99px;
+      text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .cat-yes    { background: rgba(34,197,94,0.15); color: var(--success); border: 1px solid rgba(34,197,94,0.3); }
+    .cat-maybe  { background: rgba(245,158,11,0.15); color: var(--warn); border: 1px solid rgba(245,158,11,0.3); }
+    .cat-no     { background: rgba(239,68,68,0.1); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
 
     /* ── Map ── */
     #map { flex: 1; }
 
-    /* Leaflet dark overrides */
-    .leaflet-container { background: #1a1d27; }
-    .leaflet-draw-toolbar a, .leaflet-bar a {
-      background-color: #1a1d27 !important;
-      color: #e2e8f0 !important;
-      border-color: #2a2d3a !important;
+    /* ── Detail drawer ── */
+    #detail-drawer {
+      position: fixed;
+      bottom: 0; right: 0;
+      width: 420px;
+      max-height: 70vh;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-left: 1px solid var(--border);
+      border-radius: 16px 0 0 0;
+      z-index: 500;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow-y: auto;
+      scrollbar-width: thin;
     }
-    .leaflet-draw-toolbar a:hover, .leaflet-bar a:hover {
-      background-color: #2a2d3a !important;
+    #detail-drawer.open { transform: translateY(0); }
+
+    .drawer-header {
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      z-index: 1;
     }
+
+    .drawer-close {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .drawer-close:hover { color: var(--text); }
+
+    .drawer-body { padding: 16px 20px 24px; }
+
+    /* Image carousel */
+    #drawer-images {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      margin-bottom: 16px;
+    }
+    #drawer-images img {
+      height: 140px;
+      min-width: 200px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    /* Detail stat row */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .stat-cell {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+    .stat-val { font-size: 18px; font-weight: 700; color: var(--text); }
+    .stat-key { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+    /* Category buttons */
+    .cat-buttons { display: flex; gap: 8px; margin-bottom: 16px; }
+    .cat-btn {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+    .cat-btn:hover { border-color: currentColor; }
+    .cat-btn.yes   { color: var(--success); }
+    .cat-btn.maybe { color: var(--warn); }
+    .cat-btn.no    { color: var(--danger); }
+    .cat-btn.active-yes   { background: rgba(34,197,94,0.15);  border-color: var(--success); color: var(--success); }
+    .cat-btn.active-maybe { background: rgba(245,158,11,0.15); border-color: var(--warn);    color: var(--warn); }
+    .cat-btn.active-no    { background: rgba(239,68,68,0.1);   border-color: var(--danger);  color: var(--danger); }
+
+    /* Notes */
+    .notes-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    #drawer-notes {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 72px;
+    }
+    #drawer-notes:focus { outline: none; border-color: var(--accent); }
+
+    .btn-save-notes {
+      margin-top: 8px;
+      padding: 7px 14px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      transition: background 0.15s;
+    }
+    .btn-save-notes:hover { background: #4f52e8; }
+
+    /* ── Setup banner (shown when no apartments) ── */
+    #setup-banner {
+      position: absolute;
+      top: 60px; left: 50%;
+      transform: translateX(-50%);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      z-index: 200;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    /* ── Leaflet custom popup ── */
     .leaflet-popup-content-wrapper {
       background: var(--surface);
       color: var(--text);
       border: 1px solid var(--border);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      border-radius: 10px;
     }
     .leaflet-popup-tip { background: var(--surface); }
+    .leaflet-popup-content { margin: 12px 14px; font-family: 'Inter', sans-serif; font-size: 13px; }
 
-    /* ── Saved timestamp ── */
-    #saved-at { font-size: 11px; color: var(--muted); margin-top: 8px; text-align: center; }
-
-    /* ── Scrollbar ── */
-    ::-webkit-scrollbar { width: 4px; }
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* Leaflet dark */
+    .leaflet-container { background: #1a1d27; }
+    .leaflet-bar a {
+      background-color: #1a1d27 !important;
+      color: #e2e8f0 !important;
+      border-color: #2a2d3a !important;
+    }
+    .leaflet-bar a:hover { background-color: #2a2d3a !important; }
   </style>
 </head>
 <body>
 <div id="app">
 
-  <!-- ── Sidebar ── -->
-  <aside id="sidebar">
-    <div class="sidebar-header">
-      <div class="app-title">🏠 Apartment Hunter</div>
-      <div class="app-subtitle">Boston · Back Bay · Fenway · South End</div>
-      <div class="phase-badge">
-        <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><circle cx="4" cy="4" r="4"/></svg>
-        Phase 1 — Boundary Designer
+  <!-- ── Top bar ── -->
+  <header id="topbar">
+    <div class="app-logo">
+      🏠 Apartment Hunter
+    </div>
+    <div class="topbar-divider"></div>
+    <div class="topbar-stat">
+      <strong id="stat-count">{{ total_apartments }}</strong> listings in boundary
+    </div>
+    {% if last_scraped %}
+    <div class="topbar-stat" style="margin-left:4px;">
+      · last updated <strong id="stat-updated">{{ last_scraped[:10] }}</strong>
+    </div>
+    {% endif %}
+
+    <div class="topbar-right">
+      <div class="filter-group">
+        <span class="filter-label">List</span>
+        <button class="chip active" data-filter="all">All</button>
+        <button class="chip" data-filter="yes">✓ Yes</button>
+        <button class="chip" data-filter="maybe">? Maybe</button>
+        <button class="chip" data-filter="no">✗ No</button>
+        <button class="chip" data-filter="unsorted">Unsorted</button>
       </div>
     </div>
+  </header>
 
-    <!-- Status -->
-    <div class="section">
-      <div class="section-title">Status</div>
-      <div class="status-row">
-        <div class="dot dot-green" id="boundary-status-dot"></div>
-        <span id="boundary-status-text">Boundary loaded</span>
+  <div id="body">
+    <!-- ── Sidebar: apartment list ── -->
+    <aside id="sidebar">
+      <div id="sidebar-header">
+        <span id="apt-count-label">Apartments</span>
+        <select id="sort-select">
+          <option value="rent_asc">Price ↑</option>
+          <option value="rent_desc">Price ↓</option>
+          <option value="beds_desc">Beds ↓</option>
+          <option value="newest">Newest</option>
+        </select>
       </div>
-      <div id="point-count" style="font-size:12px; color:var(--muted);">— points in polygon</div>
-    </div>
+      <div id="apt-list">
+        <!-- Populated by JS -->
+      </div>
+    </aside>
 
-    <!-- How to use -->
-    <div class="section">
-      <div class="section-title">How to use</div>
-      <ul class="step-list">
-        <li>
-          <div class="step-num">1</div>
-          <div>The default boundary covers Back Bay, Fenway &amp; South End. Review it on the map.</div>
-        </li>
-        <li>
-          <div class="step-num">2</div>
-          <div>Use the <strong>Edit</strong> tool (pencil icon) to drag vertices and reshape the boundary.</div>
-        </li>
-        <li>
-          <div class="step-num">3</div>
-          <div>To start fresh, click <strong>Clear</strong> then draw a new polygon with the polygon tool.</div>
-        </li>
-        <li>
-          <div class="step-num">4</div>
-          <div>Click <strong>Save Boundary</strong> when done. This boundary will filter apartments.</div>
-        </li>
-      </ul>
-    </div>
+    <!-- ── Map ── -->
+    <div style="position:relative; flex:1;">
+      <div id="map"></div>
 
-    <!-- Actions -->
-    <div class="section">
-      <div class="section-title">Actions</div>
-      <button class="btn btn-primary" id="save-btn" disabled>
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        Save Boundary
-      </button>
-      <button class="btn btn-secondary" id="reset-btn">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
-        Reset to Default
-      </button>
-      <button class="btn btn-danger" id="clear-btn">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-        Clear Polygon
-      </button>
-      <div id="saved-at"></div>
-    </div>
-
-    <!-- Boundary coordinates preview -->
-    <div class="section" style="flex:1;">
-      <div class="section-title">Polygon Vertices</div>
-      <div id="coord-list"><span style="color:var(--muted); font-size:12px;">No polygon drawn yet.</span></div>
-    </div>
-
-    <!-- Info note -->
-    <div class="section">
-      <div class="info-block">
-        <strong>Next:</strong> Once your boundary is saved, you'll run the scraper to pull listings from Metro Realty. Only apartments whose addresses fall <em>inside</em> this polygon will be shown to your group.
+      <!-- Setup banner (hidden once apartments exist) -->
+      <div id="setup-banner" {% if total_apartments > 0 %}style="display:none"{% endif %}>
+        <span style="font-size:20px;">👋</span>
+        <div>
+          <div style="font-weight:600; color:var(--text);">No apartments scraped yet</div>
+          <div style="color:var(--muted); font-size:12px; margin-top:2px;">Your search boundary is set. Ready to scrape when you are.</div>
+        </div>
+        <a href="/admin" class="btn-outline" style="margin-top:0;">Admin →</a>
       </div>
     </div>
-  </aside>
-
-  <!-- ── Map ── -->
-  <div id="map"></div>
+  </div>
 </div>
 
-<!-- Toast -->
-<div id="toast"></div>
+<!-- ── Detail drawer ── -->
+<div id="detail-drawer">
+  <div class="drawer-header">
+    <div>
+      <div id="drawer-address" style="font-size:15px; font-weight:700;"></div>
+      <div id="drawer-neighborhood" style="font-size:12px; color:var(--muted); margin-top:2px;"></div>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div id="drawer-images"></div>
+
+    <div class="stat-grid">
+      <div class="stat-cell">
+        <div class="stat-val" id="d-rent">—</div>
+        <div class="stat-key">/ month</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-val" id="d-beds">—</div>
+        <div class="stat-key">bedrooms</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-val" id="d-baths">—</div>
+        <div class="stat-key">bathrooms</div>
+      </div>
+    </div>
+
+    <div class="cat-buttons">
+      <button class="cat-btn yes"   onclick="setCategory('yes')"  >✓ Yes</button>
+      <button class="cat-btn maybe" onclick="setCategory('maybe')">? Maybe</button>
+      <button class="cat-btn no"    onclick="setCategory('no')"   >✗ No</button>
+    </div>
+
+    <div class="notes-label">Notes</div>
+    <textarea id="drawer-notes" placeholder="Add notes for your group…"></textarea>
+    <button class="btn-save-notes" onclick="saveNotes()">Save Notes</button>
+
+    <div style="margin-top:16px;">
+      <a id="drawer-source-link" href="#" target="_blank" style="font-size:12px; color:var(--accent); text-decoration:none;">View on Metro Realty →</a>
+    </div>
+  </div>
+</div>
 
 <script>
-  // ── Injected from Flask ──
-  const EXISTING_BOUNDARY = {{ boundary | safe }};
+  // ── Data injected by Flask ──
+  const BOUNDARY = {{ boundary | safe }};
 
-  // ── Default boundary: Back Bay / Fenway / South End ──
-  const DEFAULT_BOUNDARY = [
-    [42.3558, -71.0876],
-    [42.3562, -71.0782],
-    [42.3559, -71.0658],
-    [42.3506, -71.0642],
-    [42.3453, -71.0647],
-    [42.3374, -71.0690],
-    [42.3356, -71.0858],
-    [42.3415, -71.1048],
-    [42.3492, -71.1056],
-    [42.3526, -71.0985],
-  ];
-
-  // ── Map init ──
-  const map = L.map("map", { zoomControl: true }).setView([42.348, -71.085], 14);
+  // ── Map ──
+  const map = L.map("map", { zoomControl: true }).setView([42.347, -71.082], 14);
 
   L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    attribution: '&copy; OSM &copy; CARTO',
     subdomains: "abcd",
     maxZoom: 19,
   }).addTo(map);
 
-  // ── Drawn items layer ──
-  const drawnItems = new L.FeatureGroup();
-  map.addLayer(drawnItems);
-
-  // ── Draw controls ──
-  const drawControl = new L.Control.Draw({
-    position: "topright",
-    draw: {
-      polygon: {
-        allowIntersection: false,
-        showArea: true,
-        shapeOptions: { color: "#6366f1", fillColor: "#6366f1", fillOpacity: 0.15, weight: 2 },
-      },
-      polyline: false,
-      rectangle: false,
-      circle: false,
-      circlemarker: false,
-      marker: false,
-    },
-    edit: {
-      featureGroup: drawnItems,
-      remove: false,
-    },
-  });
-  map.addControl(drawControl);
-
-  // ── State ──
-  let currentPolygon = null;
-  let isDirty = false;
-
-  // ── Helpers ──
-  function showToast(msg, type = "success") {
-    const t = document.getElementById("toast");
-    t.textContent = (type === "success" ? "✓ " : "✗ ") + msg;
-    t.className = "show " + type;
-    clearTimeout(t._timer);
-    t._timer = setTimeout(() => { t.className = ""; }, 3000);
-  }
-
-  function setStatus(text, dotClass) {
-    document.getElementById("boundary-status-text").textContent = text;
-    const dot = document.getElementById("boundary-status-dot");
-    dot.className = "dot " + dotClass;
-  }
-
-  function updateCoordList(latlngs) {
-    const el = document.getElementById("coord-list");
-    document.getElementById("point-count").textContent = latlngs.length + " points in polygon";
-    el.innerHTML = latlngs.map((ll, i) =>
-      `<div class="coord-item"><span>#${i + 1}</span><span>${ll[0].toFixed(5)}, ${ll[1].toFixed(5)}</span></div>`
-    ).join("");
-  }
-
-  function clearCoordList() {
-    document.getElementById("coord-list").innerHTML = '<span style="color:var(--muted); font-size:12px;">No polygon drawn.</span>';
-    document.getElementById("point-count").textContent = "— points in polygon";
-  }
-
-  function loadPolygon(latlngs, fitBounds = true) {
-    drawnItems.clearLayers();
-    currentPolygon = L.polygon(latlngs, {
+  // Draw boundary polygon (read-only on main page)
+  if (BOUNDARY && BOUNDARY.latlngs) {
+    L.polygon(BOUNDARY.latlngs, {
       color: "#6366f1",
       fillColor: "#6366f1",
-      fillOpacity: 0.15,
+      fillOpacity: 0.07,
       weight: 2,
-    });
-    drawnItems.addLayer(currentPolygon);
-    if (fitBounds) map.fitBounds(currentPolygon.getBounds(), { padding: [40, 40] });
-    updateCoordList(latlngs);
-    setStatus("Boundary loaded", "dot-green");
-    document.getElementById("save-btn").disabled = false;
-    isDirty = false;
+      dashArray: "6 4",
+    }).addTo(map);
+    map.fitBounds(L.polygon(BOUNDARY.latlngs).getBounds(), { padding: [40, 40] });
   }
 
-  function markDirty() {
-    isDirty = true;
-    setStatus("Unsaved changes", "dot-yellow");
-    document.getElementById("save-btn").disabled = false;
-  }
+  // ── State ──
+  let allApartments = [];
+  let activeFilter = "all";
+  let activeId = null;
+  let markers = {};
 
-  // ── Load initial boundary ──
-  const initialLatlngs = EXISTING_BOUNDARY && EXISTING_BOUNDARY.latlngs
-    ? EXISTING_BOUNDARY.latlngs
-    : DEFAULT_BOUNDARY;
-
-  loadPolygon(initialLatlngs, true);
-
-  if (EXISTING_BOUNDARY && EXISTING_BOUNDARY.updated_at) {
-    const d = new Date(EXISTING_BOUNDARY.updated_at + "Z");
-    document.getElementById("saved-at").textContent = "Last saved: " + d.toLocaleString();
-  }
-
-  // ── Draw events ──
-  map.on(L.Draw.Event.CREATED, function (e) {
-    drawnItems.clearLayers();
-    currentPolygon = e.layer;
-    drawnItems.addLayer(currentPolygon);
-    const latlngs = currentPolygon.getLatLngs()[0].map(ll => [ll.lat, ll.lng]);
-    updateCoordList(latlngs);
-    markDirty();
-  });
-
-  map.on(L.Draw.Event.EDITED, function () {
-    if (currentPolygon) {
-      const latlngs = currentPolygon.getLatLngs()[0].map(ll => [ll.lat, ll.lng]);
-      updateCoordList(latlngs);
-    }
-    markDirty();
-  });
-
-  // ── Save button ──
-  document.getElementById("save-btn").addEventListener("click", async function () {
-    if (!currentPolygon) { showToast("No polygon to save", "error"); return; }
-    const latlngs = currentPolygon.getLatLngs()[0].map(ll => [ll.lat, ll.lng]);
-    this.disabled = true;
-    this.textContent = "Saving…";
+  // ── Fetch apartments ──
+  async function loadApartments() {
     try {
-      const res = await fetch("/api/boundary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ latlngs }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast(`Boundary saved — ${data.points} points`, "success");
-        setStatus("Boundary saved", "dot-green");
-        isDirty = false;
-        document.getElementById("saved-at").textContent = "Last saved: " + new Date().toLocaleString();
-      } else {
-        showToast(data.error || "Save failed", "error");
-      }
-    } catch (err) {
-      showToast("Network error", "error");
+      const res = await fetch("/api/apartments");
+      allApartments = await res.json();
+      render();
+    } catch (e) {
+      console.error("Failed to load apartments", e);
     }
-    this.innerHTML = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Boundary`;
-    this.disabled = false;
+  }
+
+  // ── Render list + markers ──
+  function render() {
+    const sorted = sortApartments([...allApartments]);
+    const filtered = activeFilter === "all"
+      ? sorted
+      : sorted.filter(a => a.list_category === activeFilter);
+
+    renderList(filtered);
+    renderMarkers(filtered);
+
+    document.getElementById("apt-count-label").textContent =
+      `${filtered.length} apartment${filtered.length !== 1 ? "s" : ""}`;
+  }
+
+  function sortApartments(list) {
+    const val = document.getElementById("sort-select").value;
+    if (val === "rent_asc")  return list.sort((a, b) => a.rent - b.rent);
+    if (val === "rent_desc") return list.sort((a, b) => b.rent - a.rent);
+    if (val === "beds_desc") return list.sort((a, b) => b.bedrooms - a.bedrooms);
+    if (val === "newest")    return list.sort((a, b) => new Date(b.scraped_at) - new Date(a.scraped_at));
+    return list;
+  }
+
+  function renderList(apartments) {
+    const el = document.getElementById("apt-list");
+    if (!apartments.length) {
+      el.innerHTML = `
+        <div id="empty-state">
+          <div class="empty-icon">🏙️</div>
+          <div class="empty-title">No apartments found</div>
+          <div class="empty-sub">
+            ${allApartments.length === 0
+              ? "Run the scraper to pull listings from Metro Realty.<br>Go to <a href='/admin' style='color:var(--accent)'>Admin</a> to get started."
+              : "No listings match the current filter."}
+          </div>
+        </div>`;
+      return;
+    }
+
+    el.innerHTML = apartments.map(a => {
+      const img = a.images && a.images[0]
+        ? `<img class="apt-thumb" src="${a.images[0]}" alt="" loading="lazy" />`
+        : `<div class="apt-thumb-placeholder">🏠</div>`;
+
+      const catBadge = a.list_category && a.list_category !== "unsorted"
+        ? `<span class="cat-badge cat-${a.list_category}">${a.list_category}</span>`
+        : "";
+
+      const nofee = a.no_fee ? `<span class="tag no-fee">No Fee</span>` : "";
+      const sqft  = a.sqft   ? `<span class="tag">${a.sqft} sqft</span>` : "";
+
+      return `
+        <div class="apt-card${a.id === activeId ? " active" : ""}" data-id="${a.id}" onclick="selectApartment(${a.id})">
+          ${img}
+          <div class="apt-info">
+            <div class="apt-address">${a.address}</div>
+            <div class="apt-details">${a.bedrooms ?? "?"}bd / ${a.bathrooms ?? "?"}ba${a.neighborhood ? " · " + a.neighborhood : ""}</div>
+            <div class="apt-rent">$${(a.rent || 0).toLocaleString()}<span style="font-size:11px;font-weight:400;color:var(--muted)">/mo</span></div>
+            <div class="apt-tags">${nofee}${sqft}${catBadge}</div>
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  // ── Map markers ──
+  const markerColors = { yes: "#22c55e", maybe: "#f59e0b", no: "#ef4444", unsorted: "#6366f1" };
+
+  function makeIcon(color) {
+    return L.divIcon({
+      className: "",
+      html: `<div style="
+        width:12px;height:12px;border-radius:50%;
+        background:${color};border:2px solid #fff;
+        box-shadow:0 1px 4px rgba(0,0,0,0.5);
+      "></div>`,
+      iconSize: [12, 12],
+      iconAnchor: [6, 6],
+    });
+  }
+
+  function renderMarkers(apartments) {
+    Object.values(markers).forEach(m => map.removeLayer(m));
+    markers = {};
+    apartments.forEach(a => {
+      if (!a.latitude || !a.longitude) return;
+      const color = markerColors[a.list_category] || markerColors.unsorted;
+      const m = L.marker([a.latitude, a.longitude], { icon: makeIcon(color) })
+        .bindPopup(`
+          <strong>${a.address}</strong><br>
+          $${(a.rent||0).toLocaleString()}/mo · ${a.bedrooms ?? "?"}bd/${a.bathrooms ?? "?"}ba
+        `)
+        .on("click", () => selectApartment(a.id));
+      m.addTo(map);
+      markers[a.id] = m;
+    });
+  }
+
+  // ── Select apartment ──
+  function selectApartment(id) {
+    activeId = id;
+    const apt = allApartments.find(a => a.id === id);
+    if (!apt) return;
+
+    // Update sidebar highlight
+    document.querySelectorAll(".apt-card").forEach(el => {
+      el.classList.toggle("active", parseInt(el.dataset.id) === id);
+    });
+    // Scroll card into view
+    const card = document.querySelector(`.apt-card[data-id="${id}"]`);
+    if (card) card.scrollIntoView({ block: "nearest", behavior: "smooth" });
+
+    // Pan map to marker
+    if (apt.latitude && apt.longitude) {
+      map.panTo([apt.latitude, apt.longitude], { animate: true });
+    }
+
+    openDrawer(apt);
+  }
+
+  // ── Detail drawer ──
+  let drawerApt = null;
+
+  function openDrawer(apt) {
+    drawerApt = apt;
+    document.getElementById("drawer-address").textContent = apt.address;
+    document.getElementById("drawer-neighborhood").textContent = apt.neighborhood || "";
+    document.getElementById("d-rent").textContent = `$${(apt.rent||0).toLocaleString()}`;
+    document.getElementById("d-beds").textContent = apt.bedrooms ?? "—";
+    document.getElementById("d-baths").textContent = apt.bathrooms ?? "—";
+    document.getElementById("drawer-notes").value = apt.notes || "";
+    document.getElementById("drawer-source-link").href = apt.source_url || "#";
+
+    // Images
+    const imgEl = document.getElementById("drawer-images");
+    imgEl.innerHTML = (apt.images || []).length
+      ? apt.images.map(src => `<img src="${src}" alt="" />`).join("")
+      : "";
+
+    // Category buttons
+    document.querySelectorAll(".cat-btn").forEach(btn => {
+      btn.className = "cat-btn " + btn.classList[1];
+      if (apt.list_category && btn.classList.contains(apt.list_category)) {
+        btn.classList.add("active-" + apt.list_category);
+      }
+    });
+
+    document.getElementById("detail-drawer").classList.add("open");
+  }
+
+  function closeDrawer() {
+    document.getElementById("detail-drawer").classList.remove("open");
+    drawerApt = null;
+    activeId = null;
+    document.querySelectorAll(".apt-card").forEach(el => el.classList.remove("active"));
+  }
+
+  // ── Set category ──
+  async function setCategory(cat) {
+    if (!drawerApt) return;
+    await fetch(`/api/apartments/${drawerApt.id}/rank`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ list_category: cat }),
+    });
+    drawerApt.list_category = cat;
+    const apt = allApartments.find(a => a.id === drawerApt.id);
+    if (apt) apt.list_category = cat;
+
+    // Update buttons
+    document.querySelectorAll(".cat-btn").forEach(btn => {
+      btn.className = "cat-btn " + btn.classList[1];
+      if (btn.classList.contains(cat)) btn.classList.add("active-" + cat);
+    });
+
+    // Update marker color
+    const m = markers[drawerApt.id];
+    if (m) m.setIcon(makeIcon(markerColors[cat] || markerColors.unsorted));
+
+    render();
+  }
+
+  // ── Save notes ──
+  async function saveNotes() {
+    if (!drawerApt) return;
+    const notes = document.getElementById("drawer-notes").value;
+    await fetch(`/api/apartments/${drawerApt.id}/rank`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes }),
+    });
+    const apt = allApartments.find(a => a.id === drawerApt.id);
+    if (apt) apt.notes = notes;
+    if (drawerApt) drawerApt.notes = notes;
+  }
+
+  // ── Filter chips ──
+  document.querySelectorAll(".chip[data-filter]").forEach(btn => {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".chip[data-filter]").forEach(b => b.classList.remove("active"));
+      this.classList.add("active");
+      activeFilter = this.dataset.filter;
+      render();
+    });
   });
 
-  // ── Reset button ──
-  document.getElementById("reset-btn").addEventListener("click", function () {
-    loadPolygon(DEFAULT_BOUNDARY, true);
-    markDirty();
-    showToast("Reset to default boundary", "success");
+  // ── Sort ──
+  document.getElementById("sort-select").addEventListener("change", render);
+
+  // ── Close drawer on map click ──
+  map.on("click", function (e) {
+    if (!e.originalEvent.target.closest(".leaflet-marker-icon")) {
+      closeDrawer();
+    }
   });
 
-  // ── Clear button ──
-  document.getElementById("clear-btn").addEventListener("click", function () {
-    drawnItems.clearLayers();
-    currentPolygon = null;
-    clearCoordList();
-    setStatus("No boundary set", "dot-gray");
-    document.getElementById("save-btn").disabled = true;
-    isDirty = false;
-  });
-
-  // ── Warn on leave if unsaved ──
-  window.addEventListener("beforeunload", function (e) {
-    if (isDirty) { e.preventDefault(); e.returnValue = ""; }
-  });
+  // ── Boot ──
+  loadApartments();
 </script>
 </body>
 </html>

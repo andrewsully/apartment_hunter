@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Boundary Designer | Apartment Hunter</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f1117;
+      --surface:  #1a1d27;
+      --border:   #2a2d3a;
+      --accent:   #6366f1;
+      --accent2:  #22d3ee;
+      --success:  #22c55e;
+      --warn:     #f59e0b;
+      --danger:   #ef4444;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --sidebar:  300px;
+    }
+
+    html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+
+    /* ── Layout ── */
+    #app { display: flex; height: 100vh; }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: var(--sidebar);
+      min-width: var(--sidebar);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      z-index: 1000;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .app-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+
+    .app-subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .phase-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 99px;
+      background: rgba(99,102,241,0.15);
+      color: var(--accent);
+      border: 1px solid rgba(99,102,241,0.3);
+      margin-top: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .section {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 12px;
+    }
+
+    /* ── Status indicator ── */
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot-green  { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .dot-yellow { background: var(--warn);    box-shadow: 0 0 6px var(--warn); }
+    .dot-gray   { background: var(--muted); }
+
+    /* ── Buttons ── */
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: #4f52e8; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--text); }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid rgba(239,68,68,0.3);
+    }
+    .btn-danger:hover { background: rgba(239,68,68,0.1); }
+
+    .btn + .btn { margin-top: 8px; }
+
+    /* ── Coord list ── */
+    #coord-list {
+      font-size: 12px;
+      color: var(--muted);
+      max-height: 160px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+    }
+
+    .coord-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+    }
+    .coord-item:nth-child(odd) { background: rgba(255,255,255,0.03); }
+    .coord-item span { color: var(--text); }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 9999;
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast.success { border-color: var(--success); color: var(--success); }
+    #toast.error   { border-color: var(--danger);  color: var(--danger); }
+
+    /* ── Info block ── */
+    .info-block {
+      background: rgba(99,102,241,0.08);
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 12px;
+      color: #a5b4fc;
+      line-height: 1.6;
+    }
+
+    .info-block strong { color: var(--text); }
+
+    /* ── Steps ── */
+    .step-list { list-style: none; }
+    .step-list li {
+      display: flex;
+      gap: 10px;
+      font-size: 12.5px;
+      color: var(--muted);
+      padding: 5px 0;
+      line-height: 1.5;
+    }
+    .step-num {
+      width: 20px; height: 20px;
+      min-width: 20px;
+      border-radius: 50%;
+      background: var(--border);
+      color: var(--text);
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+    }
+
+    /* ── Map ── */
+    #map { flex: 1; }
+
+    /* Leaflet dark overrides */
+    .leaflet-container { background: #1a1d27; }
+    .leaflet-draw-toolbar a, .leaflet-bar a {
+      background-color: #1a1d27 !important;
+      color: #e2e8f0 !important;
+      border-color: #2a2d3a !important;
+    }
+    .leaflet-draw-toolbar a:hover, .leaflet-bar a:hover {
+      background-color: #2a2d3a !important;
+    }
+    .leaflet-popup-content-wrapper {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    .leaflet-popup-tip { background: var(--surface); }
+
+    /* ── Saved timestamp ── */
+    #saved-at { font-size: 11px; color: var(--muted); margin-top: 8px; text-align: center; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Sidebar ── -->
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <div class="app-title">🏠 Apartment Hunter</div>
+      <div class="app-subtitle">Boston · Back Bay · Fenway · South End</div>
+      <div class="phase-badge">
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><circle cx="4" cy="4" r="4"/></svg>
+        Admin — Boundary Designer
+      </div>
+      <a href="/" style="display:inline-block; margin-top:10px; font-size:12px; color:var(--muted); text-decoration:none;">← Back to apartment browser</a>
+    </div>
+
+    <!-- Status -->
+    <div class="section">
+      <div class="section-title">Status</div>
+      <div class="status-row">
+        <div class="dot dot-green" id="boundary-status-dot"></div>
+        <span id="boundary-status-text">Boundary loaded</span>
+      </div>
+      <div id="point-count" style="font-size:12px; color:var(--muted);">— points in polygon</div>
+    </div>
+
+    <!-- How to use -->
+    <div class="section">
+      <div class="section-title">How to use</div>
+      <ul class="step-list">
+        <li>
+          <div class="step-num">1</div>
+          <div>The default boundary covers Back Bay, Fenway &amp; South End. Review it on the map.</div>
+        </li>
+        <li>
+          <div class="step-num">2</div>
+          <div>Use the <strong>Edit</strong> tool (pencil icon) to drag vertices and reshape the boundary.</div>
+        </li>
+        <li>
+          <div class="step-num">3</div>
+          <div>To start fresh, click <strong>Clear</strong> then draw a new polygon with the polygon tool.</div>
+        </li>
+        <li>
+          <div class="step-num">4</div>
+          <div>Click <strong>Save Boundary</strong> when done. This boundary will filter apartments.</div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Actions -->
+    <div class="section">
+      <div class="section-title">Actions</div>
+      <button class="btn btn-primary" id="save-btn" disabled>
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save Boundary
+      </button>
+      <button class="btn btn-secondary" id="reset-btn">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        Reset to Default
+      </button>
+      <button class="btn btn-danger" id="clear-btn">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        Clear Polygon
+      </button>
+      <div id="saved-at"></div>
+    </div>
+
+    <!-- Boundary coordinates preview -->
+    <div class="section" style="flex:1;">
+      <div class="section-title">Polygon Vertices</div>
+      <div id="coord-list"><span style="color:var(--muted); font-size:12px;">No polygon drawn yet.</span></div>
+    </div>
+
+    <!-- Info note -->
+    <div class="section">
+      <div class="info-block">
+        <strong>Next:</strong> Once your boundary is saved, you'll run the scraper to pull listings from Metro Realty. Only apartments whose addresses fall <em>inside</em> this polygon will be shown to your group.
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Map ── -->
+  <div id="map"></div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+  // ── Injected from Flask ──
+  const EXISTING_BOUNDARY = {{ boundary | safe }};
+
+  // ── Default boundary (mirrors data/boundary.json) ──
+  const DEFAULT_BOUNDARY = [
+    [42.33980, -71.09279],
+    [42.33844, -71.09195],
+    [42.34124, -71.08564],
+    [42.33999, -71.08341],
+    [42.33399, -71.07614],
+    [42.33660, -71.07287],
+    [42.34129, -71.07596],
+    [42.34440, -71.07116],
+    [42.34871, -71.07047],
+    [42.35023, -71.06772],
+    [42.35423, -71.06841],
+    [42.35664, -71.07562],
+    [42.35499, -71.08438],
+    [42.35325, -71.08931],
+    [42.35100, -71.09030],
+    [42.34338, -71.09313],
+  ];
+
+  // ── Map init ──
+  const map = L.map("map", { zoomControl: true }).setView([42.348, -71.085], 14);
+
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: "abcd",
+    maxZoom: 19,
+  }).addTo(map);
+
+  // ── Drawn items layer ──
+  const drawnItems = new L.FeatureGroup();
+  map.addLayer(drawnItems);
+
+  // ── Draw controls ──
+  const drawControl = new L.Control.Draw({
+    position: "topright",
+    draw: {
+      polygon: {
+        allowIntersection: false,
+        showArea: true,
+        shapeOptions: { color: "#6366f1", fillColor: "#6366f1", fillOpacity: 0.15, weight: 2 },
+      },
+      polyline: false,
+      rectangle: false,
+      circle: false,
+      circlemarker: false,
+      marker: false,
+    },
+    edit: {
+      featureGroup: drawnItems,
+      remove: false,
+    },
+  });
+  map.addControl(drawControl);
+
+  // ── State ──
+  let currentPolygon = null;
+  let isDirty = false;
+
+  // ── Helpers ──
+  function showToast(msg, type = "success") {
+    const t = document.getElementById("toast");
+    t.textContent = (type === "success" ? "✓ " : "✗ ") + msg;
+    t.className = "show " + type;
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.className = ""; }, 3000);
+  }
+
+  function setStatus(text, dotClass) {
+    document.getElementById("boundary-status-text").textContent = text;
+    const dot = document.getElementById("boundary-status-dot");
+    dot.className = "dot " + dotClass;
+  }
+
+  function updateCoordList(latlngs) {
+    const el = document.getElementById("coord-list");
+    document.getElementById("point-count").textContent = latlngs.length + " points in polygon";
+    el.innerHTML = latlngs.map((ll, i) =>
+      `<div class="coord-item"><span>#${i + 1}</span><span>${ll[0].toFixed(5)}, ${ll[1].toFixed(5)}</span></div>`
+    ).join("");
+  }
+
+  function clearCoordList() {
+    document.getElementById("coord-list").innerHTML = '<span style="color:var(--muted); font-size:12px;">No polygon drawn.</span>';
+    document.getElementById("point-count").textContent = "— points in polygon";
+  }
+
+  function loadPolygon(latlngs, fitBounds = true) {
+    drawnItems.clearLayers();
+    currentPolygon = L.polygon(latlngs, {
+      color: "#6366f1",
+      fillColor: "#6366f1",
+      fillOpacity: 0.15,
+      weight: 2,
+    });
+    drawnItems.addLayer(currentPolygon);
+    if (fitBounds) map.fitBounds(currentPolygon.getBounds(), { padding: [40, 40] });
+    updateCoordList(latlngs);
+    setStatus("Boundary loaded", "dot-green");
+    document.getElementById("save-btn").disabled = false;
+    isDirty = false;
+  }
+
+  function markDirty() {
+    isDirty = true;
+    setStatus("Unsaved changes", "dot-yellow");
+    document.getElementById("save-btn").disabled = false;
+  }
+
+  // ── Load initial boundary ──
+  const initialLatlngs = EXISTING_BOUNDARY && EXISTING_BOUNDARY.latlngs
+    ? EXISTING_BOUNDARY.latlngs
+    : DEFAULT_BOUNDARY;
+
+  loadPolygon(initialLatlngs, true);
+
+  if (EXISTING_BOUNDARY && EXISTING_BOUNDARY.updated_at) {
+    const d = new Date(EXISTING_BOUNDARY.updated_at + "Z");
+    document.getElementById("saved-at").textContent = "Last saved: " + d.toLocaleString();
+  }
+
+  // ── Draw events ──
+  map.on(L.Draw.Event.CREATED, function (e) {
+    drawnItems.clearLayers();
+    currentPolygon = e.layer;
+    drawnItems.addLayer(currentPolygon);
+    const latlngs = currentPolygon.getLatLngs()[0].map(ll => [ll.lat, ll.lng]);
+    updateCoordList(latlngs);
+    markDirty();
+  });
+
+  map.on(L.Draw.Event.EDITED, function () {
+    if (currentPolygon) {
+      const latlngs = currentPolygon.getLatLngs()[0].map(ll => [ll.lat, ll.lng]);
+      updateCoordList(latlngs);
+    }
+    markDirty();
+  });
+
+  // ── Save button ──
+  document.getElementById("save-btn").addEventListener("click", async function () {
+    if (!currentPolygon) { showToast("No polygon to save", "error"); return; }
+    const latlngs = currentPolygon.getLatLngs()[0].map(ll => [ll.lat, ll.lng]);
+    this.disabled = true;
+    this.textContent = "Saving…";
+    try {
+      const res = await fetch("/api/boundary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ latlngs }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Boundary saved — ${data.points} points`, "success");
+        setStatus("Boundary saved", "dot-green");
+        isDirty = false;
+        document.getElementById("saved-at").textContent = "Last saved: " + new Date().toLocaleString();
+      } else {
+        showToast(data.error || "Save failed", "error");
+      }
+    } catch (err) {
+      showToast("Network error", "error");
+    }
+    this.innerHTML = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Boundary`;
+    this.disabled = false;
+  });
+
+  // ── Reset button ──
+  document.getElementById("reset-btn").addEventListener("click", function () {
+    loadPolygon(DEFAULT_BOUNDARY, true);
+    markDirty();
+    showToast("Reset to default boundary", "success");
+  });
+
+  // ── Clear button ──
+  document.getElementById("clear-btn").addEventListener("click", function () {
+    drawnItems.clearLayers();
+    currentPolygon = null;
+    clearCoordList();
+    setStatus("No boundary set", "dot-gray");
+    document.getElementById("save-btn").disabled = true;
+    isDirty = false;
+  });
+
+  // ── Warn on leave if unsaved ──
+  window.addEventListener("beforeunload", function (e) {
+    if (isDirty) { e.preventDefault(); e.returnValue = ""; }
+  });
+</script>
+</body>
+</html>
