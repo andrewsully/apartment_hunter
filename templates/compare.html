@@ -64,6 +64,45 @@
     }
     .chip.active { background: rgba(99,102,241,0.15); border-color: var(--accent); color: var(--accent); }
 
+    /* ── Profile dropdown ── */
+    #profile-drop {
+      display: none; position: absolute; right: 0; top: calc(100% + 10px);
+      background: var(--surf); border: 1px solid var(--border);
+      border-radius: 14px; min-width: 224px; z-index: 600;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.55); overflow: hidden;
+    }
+    #profile-drop.open { display: block; }
+    .pdrop-section  { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    .pdrop-links    { padding: 6px 0; }
+    .pdrop-user-header { display: flex; align-items: center; gap: 10px; }
+    .pdrop-username { font-size: 13px; font-weight: 700; }
+    .pdrop-sub      { font-size: 11px; color: var(--muted); }
+    .pdrop-label    { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+    .pdrop-user-btns { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+    .pdrop-user-btn {
+      display: flex; align-items: center; gap: 6px; padding: 5px 10px;
+      border-radius: 8px; border: 1px solid var(--border); background: var(--surf2);
+      color: var(--text); font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all 0.12s; font-family: inherit;
+    }
+    .pdrop-user-btn:hover { border-color: var(--accent); }
+    .pdrop-price-option {
+      display: flex; align-items: center; gap: 9px; width: 100%;
+      padding: 7px 10px; border-radius: 8px; border: 1px solid transparent;
+      background: transparent; color: var(--muted);
+      font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: all 0.12s; font-family: inherit; text-align: left;
+    }
+    .pdrop-price-option:hover { background: var(--surf2); color: var(--text); }
+    .pdrop-price-option.active { color: var(--text); }
+    .pdrop-radio { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; border: 2px solid var(--border); transition: all 0.12s; }
+    .pdrop-price-option.active .pdrop-radio { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 3px var(--surf); }
+    .pdrop-nav-link {
+      display: flex; align-items: center; gap: 9px; padding: 9px 16px;
+      color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 500; transition: all 0.12s;
+    }
+    .pdrop-nav-link:hover { background: var(--surf2); color: var(--text); }
+
     /* ── User identity ── */
     #user-indicator {
       display: flex; align-items: center; gap: 8px;
@@ -247,14 +286,31 @@
   <a href="/" class="nav-back">← Listings</a>
   <div class="nav-divider"></div>
   <div class="nav-title">
-    <div class="nav-title-main">👥 Group Compare</div>
+    <div class="nav-title-main" style="display:flex;align-items:center;gap:7px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Group Compare</div>
     <div class="nav-sub">See where everyone stands</div>
   </div>
-  <div class="nav-right">
-    <button class="chip" id="price-mode-btn" onclick="togglePriceMode()">$ total</button>
-    <div id="user-indicator" onclick="openUserModal()">
+  <div class="nav-right" style="position:relative;">
+    <div id="user-indicator" onclick="toggleProfileMenu(event)" style="cursor:pointer;">
       <div class="user-avatar" id="u-avatar" style="background:#6366f1">A</div>
       <span class="user-name" id="u-name">Andrew</span>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div id="profile-drop">
+      <div class="pdrop-section">
+        <div class="pdrop-user-header">
+          <div class="user-avatar pdrop-avatar" id="pd-avatar" style="width:28px;height:28px;font-size:11px;background:#6366f1">A</div>
+          <div><div class="pdrop-username" id="pd-name">Andrew</div><div class="pdrop-sub">Switch account</div></div>
+        </div>
+        <div id="pd-user-btns" class="pdrop-user-btns"></div>
+      </div>
+      <div class="pdrop-section">
+        <div class="pdrop-label">Rent Display</div>
+        <button class="pdrop-price-option" id="pd-opt-pp"    onclick="setPriceMode('per_person', event)"><span class="pdrop-radio"></span>Per person (÷3)</button>
+        <button class="pdrop-price-option" id="pd-opt-total" onclick="setPriceMode('total', event)"><span class="pdrop-radio"></span>Total price</button>
+      </div>
+      <div class="pdrop-links">
+        <a href="/" class="pdrop-nav-link"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" x2="5" y1="12" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>All Listings</a>
+      </div>
     </div>
   </div>
 </header>
@@ -313,9 +369,11 @@ const USER_MAP = Object.fromEntries(USERS.map(u => [u.key, u]));
 function getCurrentUser() {
   return localStorage.getItem("apartment_user") || "andrew";
 }
-function selectUser(key) {
+function selectUser(key, e) {
+  if (e) e.stopPropagation();
   localStorage.setItem("apartment_user", key);
   updateUserIndicator();
+  closeProfileMenu();
   document.getElementById("user-modal-overlay").classList.remove("open");
   render();
 }
@@ -324,16 +382,39 @@ function openUserModal() {
 }
 function updateUserIndicator() {
   const u = USER_MAP[getCurrentUser()] || USERS[0];
-  document.getElementById("u-avatar").textContent  = u.initial;
-  document.getElementById("u-avatar").style.background = u.color;
-  document.getElementById("u-name").textContent    = u.name;
+  document.getElementById("u-avatar").textContent       = u.initial;
+  document.getElementById("u-avatar").style.background  = u.color;
+  document.getElementById("u-name").textContent         = u.name;
+  // Update dropdown header
+  const pdAvatar = document.getElementById("pd-avatar");
+  const pdName   = document.getElementById("pd-name");
+  if (pdAvatar) { pdAvatar.textContent = u.initial; pdAvatar.style.background = u.color; }
+  if (pdName)   pdName.textContent = u.name;
+  // Render switch-to buttons
+  const container = document.getElementById("pd-user-btns");
+  if (container) {
+    const current = getCurrentUser();
+    container.innerHTML = USERS.filter(v => v.key !== current)
+      .map(v => `<button class="pdrop-user-btn" onclick="selectUser('${v.key}', event)">
+        <div style="width:18px;height:18px;border-radius:50%;background:${v.color};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0">${v.initial}</div>
+        ${v.name}
+      </button>`).join("");
+  }
 }
+function toggleProfileMenu(e) {
+  if (e) e.stopPropagation();
+  document.getElementById("profile-drop").classList.toggle("open");
+}
+function closeProfileMenu() {
+  document.getElementById("profile-drop")?.classList.remove("open");
+}
+document.addEventListener("click", closeProfileMenu);
 document.getElementById("user-modal-overlay").addEventListener("click", function(e) {
   if (e.target === this) this.classList.remove("open");
 });
 
 // ── Price mode ────────────────────────────────────────────────────────────────
-let priceMode = localStorage.getItem("apartment_price_mode") || "total";
+let priceMode = localStorage.getItem("apartment_price_mode") || "per_person";
 
 function fmtRent(rent) {
   if (!rent) return "—";
@@ -343,18 +424,21 @@ function fmtRent(rent) {
 function fmtRentUnit() {
   return priceMode === "per_person" ? "/ person" : "/ mo";
 }
-function updatePriceModeBtn() {
-  const btn = document.getElementById("price-mode-btn");
-  if (!btn) return;
-  btn.textContent = priceMode === "per_person" ? "÷3 / person" : "$ total";
-  btn.classList.toggle("active", priceMode === "per_person");
+function updatePriceModeDisplay() {
+  const isPerPerson = priceMode === "per_person";
+  const ppEl    = document.getElementById("pd-opt-pp");
+  const totalEl = document.getElementById("pd-opt-total");
+  if (ppEl)    ppEl.classList.toggle("active",  isPerPerson);
+  if (totalEl) totalEl.classList.toggle("active", !isPerPerson);
 }
-function togglePriceMode() {
-  priceMode = priceMode === "total" ? "per_person" : "total";
+function setPriceMode(mode, e) {
+  if (e) e.stopPropagation();
+  priceMode = mode;
   localStorage.setItem("apartment_price_mode", priceMode);
-  updatePriceModeBtn();
+  updatePriceModeDisplay();
   render();
 }
+function togglePriceMode() { setPriceMode(priceMode === "total" ? "per_person" : "total"); }
 
 // ── Consensus scoring ─────────────────────────────────────────────────────────
 function getConsensus(ratings) {
@@ -366,12 +450,12 @@ function getConsensus(ratings) {
     if (cat === "no")    { noCount++; totalVotes++; score -= 1; }
   });
   if (totalVotes === 0) return { label: "No votes yet", cls: "badge-muted", cardCls: "", score: -999 };
-  if (yesCount === 3)             return { label: "🌟 All In",     cls: "badge-green", cardCls: "consensus-allyes",   score };
-  if (yesCount === 2 && noCount === 0) return { label: "✅ Strong Yes", cls: "badge-green", cardCls: "consensus-strongyes", score };
-  if (yesCount >= 1 && noCount === 0)  return { label: "👍 Leaning Yes", cls: "badge-green", cardCls: "consensus-leanyes", score };
-  if (noCount === 3)              return { label: "✗ All No",     cls: "badge-red",   cardCls: "consensus-allno",    score };
-  if (noCount >= 2)               return { label: "👎 Leaning No", cls: "badge-red",   cardCls: "consensus-leanno",   score };
-  return { label: "🤔 Mixed",       cls: "badge-amber", cardCls: "consensus-mixed",   score };
+  if (yesCount === 3)                  return { label: "All In",      cls: "badge-green", cardCls: "consensus-allyes",   score };
+  if (yesCount === 2 && noCount === 0) return { label: "Strong Yes",  cls: "badge-green", cardCls: "consensus-strongyes", score };
+  if (yesCount >= 1 && noCount === 0)  return { label: "Leaning Yes", cls: "badge-green", cardCls: "consensus-leanyes",  score };
+  if (noCount === 3)                   return { label: "All No",       cls: "badge-red",   cardCls: "consensus-allno",    score };
+  if (noCount >= 2)                    return { label: "Leaning No",  cls: "badge-red",   cardCls: "consensus-leanno",   score };
+  return                               { label: "Mixed",              cls: "badge-amber", cardCls: "consensus-mixed",    score };
 }
 
 // ── Filter state ──────────────────────────────────────────────────────────────
@@ -435,12 +519,15 @@ function renderCard(a) {
   const imgSrc = a.images?.[0] || "";
   const thumbHtml = imgSrc
     ? `<img class="cmp-thumb" src="${imgSrc}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-       <div class="cmp-thumb-ph" style="display:none">🏠</div>`
-    : `<div class="cmp-thumb-ph">🏠</div>`;
+       <div class="cmp-thumb-ph" style="display:none"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.2"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/></svg></div>`
+    : `<div class="cmp-thumb-ph"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.2"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/></svg></div>`;
 
   const voteHtml = USERS.map(u => {
     const cat = a.user_ratings?.[u.key]?.list_category || "unsorted";
-    const label = cat === "yes" ? "✓ Yes" : cat === "maybe" ? "? Maybe" : cat === "no" ? "✗ No" : "—";
+    const checkSvg = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+    const minusSvg = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+    const xSvg    = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    const label = cat === "yes" ? `${checkSvg} Yes` : cat === "maybe" ? `${minusSvg} Maybe` : cat === "no" ? `${xSvg} No` : "—";
     const cls   = cat === "yes" ? "v-yes" : cat === "maybe" ? "v-maybe" : cat === "no" ? "v-no" : "v-none";
     return `<span class="vote-pill ${cls}">
       <span class="vote-avatar" style="background:${u.color}">${u.initial}</span>
@@ -476,7 +563,7 @@ function renderCard(a) {
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 updateUserIndicator();
-updatePriceModeBtn();
+updatePriceModeDisplay();
 if (!localStorage.getItem("apartment_user")) {
   setTimeout(() => openUserModal(), 400);
 }

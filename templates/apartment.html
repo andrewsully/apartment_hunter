@@ -71,6 +71,46 @@
       transition: all 0.15s; white-space: nowrap; font-family: inherit;
     }
     .chip.active { background: rgba(99,102,241,0.15); border-color: var(--accent); color: var(--accent); }
+
+    /* ── Profile dropdown ── */
+    #profile-drop {
+      display: none; position: absolute; right: 0; top: calc(100% + 10px);
+      background: var(--surf); border: 1px solid var(--border);
+      border-radius: 14px; min-width: 224px; z-index: 600;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.55); overflow: hidden;
+    }
+    #profile-drop.open { display: block; }
+    .pdrop-section  { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    .pdrop-links    { padding: 6px 0; }
+    .pdrop-user-header { display: flex; align-items: center; gap: 10px; }
+    .pdrop-username { font-size: 13px; font-weight: 700; }
+    .pdrop-sub      { font-size: 11px; color: var(--muted); }
+    .pdrop-label    { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+    .pdrop-user-btns { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+    .pdrop-user-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 10px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--surf2);
+      color: var(--text); font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all 0.12s; font-family: inherit;
+    }
+    .pdrop-user-btn:hover { border-color: var(--accent); }
+    .pdrop-price-option {
+      display: flex; align-items: center; gap: 9px; width: 100%;
+      padding: 7px 10px; border-radius: 8px; border: 1px solid transparent;
+      background: transparent; color: var(--muted);
+      font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: all 0.12s; font-family: inherit; text-align: left;
+    }
+    .pdrop-price-option:hover { background: var(--surf2); color: var(--text); }
+    .pdrop-price-option.active { color: var(--text); }
+    .pdrop-radio { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; border: 2px solid var(--border); transition: all 0.12s; }
+    .pdrop-price-option.active .pdrop-radio { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 3px var(--surf); }
+    .pdrop-nav-link {
+      display: flex; align-items: center; gap: 9px; padding: 9px 16px;
+      color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 500; transition: all 0.12s;
+    }
+    .pdrop-nav-link:hover { background: var(--surf2); color: var(--text); }
     .nav-arrow {
       display: flex; align-items: center; gap: 4px;
       text-decoration: none; font-size: 12px; font-weight: 600;
@@ -237,6 +277,7 @@
       cursor: pointer; border: 1.5px solid var(--border);
       background: transparent; color: var(--muted);
       transition: all 0.15s; letter-spacing: 0.2px;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
     }
     .vote-btn:hover { border-color: currentColor; }
     .vote-btn.yes   { color: var(--green); }
@@ -461,12 +502,21 @@
     @media (max-width: 767px) {
       html, body { overflow-y: auto; height: auto; }
 
-      /* Compact topnav */
-      #topnav { padding: 0 10px; gap: 8px; }
-      .nav-back { padding: 6px 8px; font-size: 12px; }
-      .nav-addr { font-size: 12px; }
+      /* Compact topnav — keep only essential items, prevent overflow */
+      #topnav { padding: 0 10px; gap: 6px; overflow: hidden; }
+      .nav-back { padding: 6px 6px; font-size: 12px; }
+      .nav-divider { display: none; }
+      .nav-title { min-width: 0; }
+      .nav-addr { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .nav-sub  { display: none; }
-      .nav-arrow { padding: 5px 8px; font-size: 11px; }
+      /* Prev/Next: icon-only on mobile */
+      .nav-arrows { gap: 4px; }
+      .nav-arrow { padding: 6px 10px; font-size: 16px; }
+      .arrow-label { display: none; }
+      .nav-arrow-prev::before { content: "‹"; }
+      .nav-arrow-next::after  { content: "›"; }
+      /* Hide price toggle — it reads localStorage automatically, toggle from main page */
+      #price-mode-btn { display: none; }
       #user-indicator { flex-shrink: 0; }
 
       /* Gallery: use aspect ratio instead of fixed height columns */
@@ -513,14 +563,33 @@
   </div>
   <div class="nav-arrows">
     {% if prev_id %}
-      <a href="/apartment/{{ prev_id }}" class="nav-arrow">‹ Prev</a>
+      <a href="/apartment/{{ prev_id }}" class="nav-arrow nav-arrow-prev"><span class="arrow-label">‹ Prev</span></a>
     {% endif %}
     {% if next_id %}
-      <a href="/apartment/{{ next_id }}" class="nav-arrow">Next ›</a>
+      <a href="/apartment/{{ next_id }}" class="nav-arrow nav-arrow-next"><span class="arrow-label">Next ›</span></a>
     {% endif %}
   </div>
-  <button class="chip" id="price-mode-btn" onclick="togglePriceMode()" style="flex-shrink:0;">$ total</button>
-  <div id="user-indicator" style="flex-shrink:0;"></div>
+  <div style="position:relative; flex-shrink:0;">
+    <div id="user-indicator" onclick="toggleProfileMenu(event)" style="cursor:pointer;"></div>
+    <div id="profile-drop">
+      <div class="pdrop-section">
+        <div class="pdrop-user-header">
+          <div class="user-avatar pdrop-avatar" id="pd-avatar" style="width:28px;height:28px;font-size:11px;background:#6366f1">A</div>
+          <div><div class="pdrop-username" id="pd-name">Andrew</div><div class="pdrop-sub">Switch account</div></div>
+        </div>
+        <div id="pd-user-btns" class="pdrop-user-btns"></div>
+      </div>
+      <div class="pdrop-section">
+        <div class="pdrop-label">Rent Display</div>
+        <button class="pdrop-price-option" id="pd-opt-pp"    onclick="setPriceMode('per_person', event)"><span class="pdrop-radio"></span>Per person (÷3)</button>
+        <button class="pdrop-price-option" id="pd-opt-total" onclick="setPriceMode('total', event)"><span class="pdrop-radio"></span>Total price</button>
+      </div>
+      <div class="pdrop-links">
+        <a href="/" class="pdrop-nav-link"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" x2="5" y1="12" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>All Listings</a>
+        <a href="/compare" class="pdrop-nav-link"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Group Compare</a>
+      </div>
+    </div>
+  </div>
 </header>
 
 <!-- ── Main ── -->
@@ -540,7 +609,7 @@
           <div class="gallery-counter" id="g-counter">1 / {{ apt.images | length }}</div>
         {% else %}
           <div class="no-photo-placeholder">
-            <span>🏠</span>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.2"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/></svg>
             No photos available
           </div>
         {% endif %}
@@ -601,7 +670,7 @@
 
     <!-- Availability row -->
     <div class="info-row">
-      <span class="icon">📅</span>
+      <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg></span>
       <span><span class="label">Available</span> <strong>{{ apt.available_from or "—" }}</strong></span>
       <span class="spacer"></span>
       {% if apt.no_fee %}<span class="badge badge-green">No Fee</span>{% endif %}
@@ -611,14 +680,14 @@
     {% if apt.available_to %}
     <!-- Move-out / lease end -->
     <div class="info-row">
-      <span class="icon">🗓</span>
+      <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><line x1="16" x2="16" y1="14" y2="18"/></svg></span>
       <span><span class="label">Lease end</span> <strong>{{ apt.available_to }}</strong></span>
     </div>
     {% endif %}
 
     <!-- Boundary row -->
     <div class="info-row">
-      <span class="icon">📍</span>
+      <span class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>
       <span><span class="label">Boundary</span></span>
       <span class="spacer"></span>
       {% if apt.within_boundary %}
@@ -631,7 +700,7 @@
     <!-- Quick details chips -->
     <div style="display:flex;gap:6px;flex-wrap:wrap;">
       {% if apt.no_fee %}
-        <span class="badge badge-green">✓ No Fee</span>
+        <span class="badge badge-green">No Fee</span>
       {% endif %}
       {% if apt.pet_friendly %}
         <span class="badge badge-green">🐾 Pets OK</span>
@@ -655,9 +724,9 @@
         👤 Select who you are to vote
       </div>
       <div class="vote-row">
-        <button class="vote-btn yes"   data-cat="yes"  >✓ Yes</button>
-        <button class="vote-btn maybe" data-cat="maybe">? Maybe</button>
-        <button class="vote-btn no"    data-cat="no"   >✗ No</button>
+        <button class="vote-btn yes"   data-cat="yes"  ><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Yes</button>
+        <button class="vote-btn maybe" data-cat="maybe"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg> Maybe</button>
+        <button class="vote-btn no"    data-cat="no"   ><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> No</button>
       </div>
     </div>
 
@@ -698,7 +767,7 @@
       <textarea id="notes-ta" placeholder="Write something the group can see…"></textarea>
       <div class="notes-footer">
         <button id="notes-save-btn">Save</button>
-        <span id="notes-feedback">Saved ✓</span>
+        <span id="notes-feedback">Saved</span>
       </div>
     </div>
 
@@ -777,24 +846,55 @@ function closeUserModal() {
   document.getElementById("user-modal").classList.remove("open");
 }
 
-function selectUser(user) {
+function selectUser(user, e) {
+  if (e) e.stopPropagation();
   localStorage.setItem("apartment_user", user);
   closeUserModal();
+  closeProfileMenu();
   updateUserIndicator();
   updateVoteButtons();
 }
 
+function toggleProfileMenu(e) {
+  if (e) e.stopPropagation();
+  document.getElementById("profile-drop").classList.toggle("open");
+}
+function closeProfileMenu() {
+  document.getElementById("profile-drop")?.classList.remove("open");
+}
+document.addEventListener("click", closeProfileMenu);
+
 function updateUserIndicator() {
   const user = getCurrentUser();
   const el = document.getElementById("user-indicator");
+  const chevron = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:0.6"><polyline points="6 9 12 15 18 9"/></svg>`;
   if (user && USER_CONFIG[user]) {
     const u = USER_CONFIG[user];
-    el.innerHTML = `<button class="user-btn" onclick="openUserModal()">
+    el.innerHTML = `<div class="user-btn">
       <div class="user-avatar-sm" style="background:${u.color}">${u.initial}</div>
       <span class="user-name-sm">${u.name}</span>
-    </button>`;
+      ${chevron}
+    </div>`;
   } else {
-    el.innerHTML = `<button class="user-btn-ghost" onclick="openUserModal()">👤 Who are you?</button>`;
+    el.innerHTML = `<div class="user-btn-ghost">Set identity ${chevron}</div>`;
+  }
+  // Update dropdown header
+  const pdAvatar = document.getElementById("pd-avatar");
+  const pdName   = document.getElementById("pd-name");
+  if (user && USER_CONFIG[user]) {
+    const u = USER_CONFIG[user];
+    if (pdAvatar) { pdAvatar.textContent = u.initial; pdAvatar.style.background = u.color; }
+    if (pdName)   pdName.textContent = u.name;
+  }
+  // Render switch-to user buttons
+  const container = document.getElementById("pd-user-btns");
+  if (container) {
+    container.innerHTML = Object.entries(USER_CONFIG)
+      .filter(([key]) => key !== user)
+      .map(([key, u]) => `<button class="pdrop-user-btn" onclick="selectUser('${key}', event)">
+        <div class="user-avatar-sm" style="background:${u.color};width:18px;height:18px;font-size:9px">${u.initial}</div>
+        ${u.name}
+      </button>`).join("");
   }
 }
 
@@ -968,7 +1068,10 @@ function renderNotesThread() {
   if (btn) { btn.disabled = !user; btn.style.opacity = user ? "" : "0.4"; }
 }
 
-const VOTE_LABELS = { yes: "✓ Yes", maybe: "? Maybe", no: "✗ No", unsorted: "—" };
+const CHECK_SVG = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>`;
+const MINUS_SVG = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+const XMARK_SVG = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+const VOTE_LABELS = { yes: `${CHECK_SVG} Yes`, maybe: `${MINUS_SVG} Maybe`, no: `${XMARK_SVG} No`, unsorted: "—" };
 const VOTE_COLORS = { yes: "var(--green)", maybe: "var(--amber)", no: "var(--red)", unsorted: "var(--muted)" };
 
 // APT.user_ratings is populated by the server; keep a mutable local copy
@@ -1003,9 +1106,10 @@ function updateVoteButtons() {
     const el = document.getElementById(`rmvote-${u}`);
     if (!el) return;
     const cat = localRatings[u]?.list_category || "unsorted";
-    el.textContent = VOTE_LABELS[cat] || "—";
+    el.innerHTML = VOTE_LABELS[cat] || "—";
     el.style.color = VOTE_COLORS[cat] || "var(--muted)";
     el.style.fontStyle = cat === "unsorted" ? "italic" : "normal";
+    el.style.display = "flex"; el.style.alignItems = "center"; el.style.gap = "4px";
   });
 
   // Notes thread
@@ -1060,7 +1164,7 @@ function toast(msg) {
 
 // ── Price mode ────────────────────────────────────────────────────────────────
 const APT_RENT = {{ apt.rent or 0 }};
-let priceMode = localStorage.getItem("apartment_price_mode") || "total";
+let priceMode = localStorage.getItem("apartment_price_mode") || "per_person";
 
 function applyPriceMode() {
   const val = priceMode === "per_person" ? Math.round(APT_RENT / 3) : APT_RENT;
@@ -1068,21 +1172,22 @@ function applyPriceMode() {
   const perEl = document.getElementById("rent-per");
   if (el) el.textContent = "$" + val.toLocaleString();
   if (perEl) perEl.textContent = priceMode === "per_person" ? "/ person" : "/mo";
-  const btn = document.getElementById("price-mode-btn");
-  if (btn) {
-    btn.textContent = priceMode === "per_person" ? "÷3 / person" : "$ total";
-    btn.classList.toggle("active", priceMode === "per_person");
-  }
+  const ppEl    = document.getElementById("pd-opt-pp");
+  const totalEl = document.getElementById("pd-opt-total");
+  if (ppEl)    ppEl.classList.toggle("active",  priceMode === "per_person");
+  if (totalEl) totalEl.classList.toggle("active", priceMode === "total");
 }
-function togglePriceMode() {
-  priceMode = priceMode === "total" ? "per_person" : "total";
+function setPriceMode(mode, e) {
+  if (e) e.stopPropagation();
+  priceMode = mode;
   localStorage.setItem("apartment_price_mode", priceMode);
   applyPriceMode();
 }
+function togglePriceMode() { setPriceMode(priceMode === "total" ? "per_person" : "total"); }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
-updateUserIndicator();
-applyPriceMode();
+updateUserIndicator(); // builds dropdown too
+applyPriceMode();      // sets rent display + dropdown radio
 if (!getCurrentUser()) {
   setTimeout(() => openUserModal(), 600);
 }

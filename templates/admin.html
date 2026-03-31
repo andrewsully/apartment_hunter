@@ -273,7 +273,7 @@
   <!-- ── Sidebar ── -->
   <aside id="sidebar">
     <div class="sidebar-header">
-      <div class="app-title">🏠 Apartment Hunter</div>
+      <div class="app-title">Apartment Hunter</div>
       <div class="app-subtitle">Boston · Back Bay · Fenway · South End</div>
       <div class="phase-badge">
         <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><circle cx="4" cy="4" r="4"/></svg>
@@ -441,7 +441,7 @@
   // ── Helpers ──
   function showToast(msg, type = "success") {
     const t = document.getElementById("toast");
-    t.textContent = (type === "success" ? "✓ " : "✗ ") + msg;
+    t.textContent = msg;
     t.className = "show " + type;
     clearTimeout(t._timer);
     t._timer = setTimeout(() => { t.className = ""; }, 3000);

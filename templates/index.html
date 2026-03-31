@@ -50,6 +50,7 @@
       padding: 4px 11px; border-radius: 99px; font-size: 12px; font-weight: 500;
       cursor: pointer; border: 1px solid var(--border); background: transparent;
       color: var(--muted); transition: all 0.15s; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 5px;
     }
     .chip:hover { border-color: var(--accent); color: var(--text); }
     .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -259,7 +260,7 @@
       flex: 1; padding: 9px 6px; border-radius: 8px;
       font-size: 12px; font-weight: 600; cursor: pointer;
       border: 1px solid var(--border); background: transparent; color: var(--muted);
-      transition: all 0.15s;
+      transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 5px;
     }
     .cat-btn:hover { border-color: currentColor; }
     .cat-btn.yes   { color: var(--green); }
@@ -373,6 +374,55 @@
     }
     .user-btn-ghost:hover { border-color: var(--accent); color: var(--text); }
 
+    /* ── Profile dropdown ── */
+    .topbar-right { position: relative; }
+    #profile-drop {
+      display: none; position: absolute; right: 0; top: calc(100% + 10px);
+      background: var(--surf); border: 1px solid var(--border);
+      border-radius: 14px; min-width: 236px; z-index: 600;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.55); overflow: hidden;
+      animation: dropIn 0.12s ease-out;
+    }
+    #profile-drop.open { display: block; }
+    @keyframes dropIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+    .pdrop-section { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    .pdrop-links   { padding: 6px 0; }
+    .pdrop-user-header { display: flex; align-items: center; gap: 10px; }
+    .pdrop-avatar { width: 30px !important; height: 30px !important; font-size: 12px !important; flex-shrink: 0; }
+    .pdrop-username { font-size: 13px; font-weight: 700; }
+    .pdrop-sub { font-size: 11px; color: var(--muted); }
+    .pdrop-label { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+    .pdrop-user-btns { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+    .pdrop-user-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 10px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--surf2);
+      color: var(--text); font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all 0.12s; font-family: inherit;
+    }
+    .pdrop-user-btn:hover { border-color: var(--accent); }
+    .pdrop-price-option {
+      display: flex; align-items: center; gap: 9px;
+      width: 100%; padding: 7px 10px; border-radius: 8px;
+      border: 1px solid transparent; background: transparent;
+      color: var(--muted); font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: all 0.12s; font-family: inherit; text-align: left;
+    }
+    .pdrop-price-option:hover { background: var(--surf2); color: var(--text); }
+    .pdrop-price-option.active { color: var(--text); }
+    .pdrop-radio {
+      width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid var(--border); transition: all 0.12s;
+    }
+    .pdrop-price-option.active .pdrop-radio { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 3px var(--surf); }
+    .pdrop-nav-link {
+      display: flex; align-items: center; gap: 9px;
+      padding: 9px 16px; color: var(--muted);
+      text-decoration: none; font-size: 13px; font-weight: 500;
+      transition: all 0.12s;
+    }
+    .pdrop-nav-link:hover { background: var(--surf2); color: var(--text); }
+
     /* ── User modal ── */
     #user-modal {
       position: fixed; inset: 0; z-index: 8000;
@@ -443,9 +493,11 @@
 
     /* ── Mobile layout ── */
     @media (max-width: 767px) {
-      /* Topbar: single clean row, hide stats */
+      /* Topbar: logo + user pill only — no overflow possible */
       #topbar { padding: 0 12px; }
       .stat, #topbar .divider { display: none; }
+      /* Profile dropdown: full width on very small screens */
+      #profile-drop { right: -4px; min-width: min(236px, calc(100vw - 24px)); }
 
       /* Body: sidebar fills screen, map hidden by default */
       #body { position: relative; }
@@ -493,17 +545,35 @@
 
   <!-- ── Top bar ── -->
   <header id="topbar">
-    <div class="logo">🏠 Apartment Hunter</div>
+    <div class="logo">Apartment Hunter</div>
     <div class="divider"></div>
     <div class="stat"><strong id="stat-showing">—</strong> shown</div>
     <div class="stat" style="margin-left:-4px;">of <strong id="stat-total">—</strong> total</div>
 
     <div class="topbar-right">
-      <button class="chip" id="price-mode-btn" onclick="togglePriceMode()">$ total</button>
-      <div class="filter-sep"></div>
-      <a href="/compare" class="chip" style="text-decoration:none;">👥 Group</a>
-      <div class="filter-sep"></div>
-      <div id="user-indicator"></div>
+      <div id="user-indicator" onclick="toggleProfileMenu(event)"></div>
+      <!-- Profile / settings dropdown -->
+      <div id="profile-drop">
+        <div class="pdrop-section">
+          <div class="pdrop-user-header">
+            <div class="user-avatar-sm pdrop-avatar" id="pd-avatar">A</div>
+            <div>
+              <div class="pdrop-username" id="pd-name">Andrew</div>
+              <div class="pdrop-sub">Switch account</div>
+            </div>
+          </div>
+          <div id="pd-user-btns" class="pdrop-user-btns"></div>
+        </div>
+        <div class="pdrop-section">
+          <div class="pdrop-label">Rent Display</div>
+          <button class="pdrop-price-option" id="pd-opt-pp"    onclick="setPriceMode('per_person', event)"><span class="pdrop-radio"></span>Per person (÷3)</button>
+          <button class="pdrop-price-option" id="pd-opt-total" onclick="setPriceMode('total', event)"><span class="pdrop-radio"></span>Total price</button>
+        </div>
+        <div class="pdrop-links">
+          <a href="/compare" class="pdrop-nav-link"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Group Compare</a>
+          <a href="/admin"   class="pdrop-nav-link"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>Admin Panel</a>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -512,12 +582,12 @@
     <aside id="sidebar">
       <!-- Filter chips — live above the list they control -->
       <div id="list-filters">
-        <button class="chip boundary-on" id="boundary-chip" onclick="toggleBoundary()">📍 In Boundary</button>
+        <button class="chip boundary-on" id="boundary-chip" onclick="toggleBoundary()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> In Boundary</button>
         <div class="filter-sep"></div>
         <button class="chip active" data-cat="all">All</button>
-        <button class="chip" data-cat="yes"      style="color:var(--muted);">✓ Yes</button>
-        <button class="chip" data-cat="maybe"    style="color:var(--muted);">? Maybe</button>
-        <button class="chip" data-cat="no"       style="color:var(--muted);">✗ No</button>
+        <button class="chip" data-cat="yes"      style="color:var(--muted);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Yes</button>
+        <button class="chip" data-cat="maybe"    style="color:var(--muted);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg> Maybe</button>
+        <button class="chip" data-cat="no"       style="color:var(--muted);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> No</button>
         <button class="chip" data-cat="unsorted" style="color:var(--muted);">Unsorted</button>
       </div>
       <div id="sidebar-header">
@@ -540,7 +610,7 @@
 </div>
 
 <!-- ── Mobile floating view toggle (hidden on desktop) ── -->
-<button id="mobile-fab" onclick="toggleMobileView()">🗺 Map</button>
+<button id="mobile-fab" onclick="toggleMobileView()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg> Map</button>
 
 <!-- ── Detail drawer ── -->
 <div id="drawer">
@@ -558,7 +628,7 @@
   <!-- Image gallery -->
   <div id="d-gallery">
     <img id="d-main-img" src="" alt="" />
-    <div class="d-no-photos-msg" id="d-no-photos">🏠 No photos available</div>
+    <div class="d-no-photos-msg" id="d-no-photos">No photos available</div>
     <button class="d-arrow d-arrow-prev" id="d-img-prev" onclick="drawerNav(-1)">‹</button>
     <button class="d-arrow d-arrow-next" id="d-img-next" onclick="drawerNav(1)">›</button>
     <div class="d-photo-badge" id="d-photo-badge"></div>
@@ -575,16 +645,16 @@
     </div>
 
     <div class="avail-row">
-      <span>📅</span>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:0.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
       <span>Available: <strong id="d-avail">—</strong></span>
       <span id="d-nofee-badge"  style="display:none;" class="avail-badge green">No Fee</span>
       <span id="d-pet-badge"    style="display:none;" class="avail-badge green" >Pets OK</span>
     </div>
 
     <div class="cat-row">
-      <button class="cat-btn yes"   data-cat="yes"  >✓ Yes</button>
-      <button class="cat-btn maybe" data-cat="maybe">? Maybe</button>
-      <button class="cat-btn no"    data-cat="no"   >✗ No</button>
+      <button class="cat-btn yes"   data-cat="yes"  ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Yes</button>
+      <button class="cat-btn maybe" data-cat="maybe"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg> Maybe</button>
+      <button class="cat-btn no"    data-cat="no"   ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> No</button>
     </div>
 
     <div class="section-label">Group Notes</div>
@@ -598,7 +668,7 @@
     <textarea id="notes-ta" placeholder="Write something…"></textarea>
     <div class="notes-footer">
       <button id="notes-save-btn">Save</button>
-      <span id="notes-feedback">Saved ✓</span>
+      <span id="notes-feedback">Saved</span>
     </div>
 
     <a id="d-source-link" class="source-link" href="#" target="_blank">
@@ -659,9 +729,11 @@ function closeUserModal() {
   document.getElementById("user-modal").classList.remove("open");
 }
 
-function selectUser(user) {
+function selectUser(user, e) {
+  if (e) e.stopPropagation();
   localStorage.setItem("apartment_user", user);
   closeUserModal();
+  closeProfileMenu();
   updateUserIndicator();
   render();
   if (drawerApt) openDrawer(drawerApt);
@@ -669,17 +741,51 @@ function selectUser(user) {
 
 function updateUserIndicator() {
   const user = getCurrentUser();
-  const el = document.getElementById("user-indicator");
+  const el   = document.getElementById("user-indicator");
+  const chevron = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:0.6"><polyline points="6 9 12 15 18 9"/></svg>`;
   if (user && USER_CONFIG[user]) {
     const u = USER_CONFIG[user];
-    el.innerHTML = `<button class="user-btn" onclick="openUserModal()">
+    el.innerHTML = `<div class="user-btn">
       <div class="user-avatar-sm" style="background:${u.color}">${u.initial}</div>
       <span class="user-name-sm">${u.name}</span>
-    </button>`;
+      ${chevron}
+    </div>`;
   } else {
-    el.innerHTML = `<button class="user-btn-ghost" onclick="openUserModal()">👤 Who are you?</button>`;
+    el.innerHTML = `<div class="user-btn-ghost">Set identity${chevron}</div>`;
   }
+  // Update dropdown header
+  const pdAvatar = document.getElementById("pd-avatar");
+  const pdName   = document.getElementById("pd-name");
+  if (user && USER_CONFIG[user]) {
+    const u = USER_CONFIG[user];
+    if (pdAvatar) { pdAvatar.textContent = u.initial; pdAvatar.style.background = u.color; }
+    if (pdName)   pdName.textContent = u.name;
+  }
+  renderProfileUserBtns();
 }
+
+function renderProfileUserBtns() {
+  const container = document.getElementById("pd-user-btns");
+  if (!container) return;
+  const current = getCurrentUser();
+  container.innerHTML = Object.entries(USER_CONFIG)
+    .filter(([key]) => key !== current)
+    .map(([key, u]) => `<button class="pdrop-user-btn" onclick="selectUser('${key}', event)">
+      <div class="user-avatar-sm" style="background:${u.color};width:18px;height:18px;font-size:9px">${u.initial}</div>
+      ${u.name}
+    </button>`).join("");
+}
+
+function toggleProfileMenu(e) {
+  if (e) e.stopPropagation();
+  const drop = document.getElementById("profile-drop");
+  drop.classList.toggle("open");
+}
+function closeProfileMenu() {
+  document.getElementById("profile-drop")?.classList.remove("open");
+}
+// Close on outside click
+document.addEventListener("click", closeProfileMenu);
 
 // Close modal on backdrop click
 document.getElementById("user-modal").addEventListener("click", function(e) {
@@ -708,7 +814,7 @@ let activeFilter = "all";     // "all" | "yes" | "maybe" | "no" | "unsorted"
 let boundaryOnly = true;      // toggled by the boundary chip
 let activeId = null;
 let markers = {};
-let priceMode = localStorage.getItem("apartment_price_mode") || "total"; // "total" | "per_person"
+let priceMode = localStorage.getItem("apartment_price_mode") || "per_person"; // "total" | "per_person"
 
 // ── Price formatting ───────────────────────────────────────────────────────────
 function fmtRent(rent) {
@@ -719,21 +825,21 @@ function fmtRent(rent) {
 function fmtRentUnit() {
   return priceMode === "per_person" ? "/ person" : "/ mo";
 }
-function updatePriceModeBtn() {
-  const btn = document.getElementById("price-mode-btn");
-  if (!btn) return;
-  if (priceMode === "per_person") {
-    btn.textContent = "÷3 / person";
-    btn.classList.add("active");
-  } else {
-    btn.textContent = "$ total";
-    btn.classList.remove("active");
-  }
+function updatePriceModeDisplay() {
+  const isPerPerson = priceMode === "per_person";
+  const ppEl    = document.getElementById("pd-opt-pp");
+  const totalEl = document.getElementById("pd-opt-total");
+  if (ppEl)    ppEl.classList.toggle("active",  isPerPerson);
+  if (totalEl) totalEl.classList.toggle("active", !isPerPerson);
 }
-function togglePriceMode() {
-  priceMode = priceMode === "total" ? "per_person" : "total";
+// Keep alias so apartment.html-style calls don't break
+const updatePriceModeBtn = updatePriceModeDisplay;
+
+function setPriceMode(mode, e) {
+  if (e) e.stopPropagation();
+  priceMode = mode;
   localStorage.setItem("apartment_price_mode", priceMode);
-  updatePriceModeBtn();
+  updatePriceModeDisplay();
   render();
   if (drawerApt) {
     document.getElementById("d-rent").textContent = fmtRent(drawerApt.rent);
@@ -741,6 +847,7 @@ function togglePriceMode() {
     if (key) key.textContent = fmtRentUnit();
   }
 }
+function togglePriceMode() { setPriceMode(priceMode === "total" ? "per_person" : "total"); }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function toast(msg) {
@@ -809,7 +916,7 @@ function renderList(apts) {
   el.innerHTML = apts.map(a => {
     const thumb = a.images && a.images[0]
       ? `<img class="apt-thumb" src="${a.images[0]}" loading="lazy" alt="" />`
-      : `<div class="apt-thumb-ph">🏠</div>`;
+      : `<div class="apt-thumb-ph"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/></svg></div>`;
 
     const cat = getUserCat(a);
     const catPill = cat && cat !== "unsorted" ? `<span class="cat-pill ${cat}">${cat}</span>` : "";
@@ -1088,7 +1195,8 @@ document.getElementById("notes-save-btn").addEventListener("click", async () => 
 function toggleBoundary() {
   boundaryOnly = !boundaryOnly;
   const chip = document.getElementById("boundary-chip");
-  chip.textContent = boundaryOnly ? "📍 In Boundary" : "🌐 All Areas";
+  const pinSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`;
+  chip.innerHTML = boundaryOnly ? `${pinSvg} In Boundary` : `${pinSvg} All Areas`;
   chip.style.background = boundaryOnly ? "" : "transparent";
   chip.style.color = boundaryOnly ? "" : "var(--muted)";
   render();
@@ -1128,7 +1236,9 @@ function toggleMobileView() {
   document.getElementById("sidebar").classList.toggle("mobile-map", mobileMapActive);
   document.getElementById("map-wrap").classList.toggle("mobile-map", mobileMapActive);
   const fab = document.getElementById("mobile-fab");
-  fab.textContent = mobileMapActive ? "📋 List" : "🗺 Map";
+  const mapSvg  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>`;
+  const listSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>`;
+  fab.innerHTML = mobileMapActive ? `${listSvg} List` : `${mapSvg} Map`;
   fab.classList.toggle("list-mode", mobileMapActive);
   // Leaflet must recalculate size after being revealed from display:none
   if (mobileMapActive) setTimeout(() => map.invalidateSize(), 50);
@@ -1138,7 +1248,7 @@ function toggleMobileView() {
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 updateUserIndicator();
-updatePriceModeBtn();
+updatePriceModeDisplay();
 // Show user modal on first visit
 if (!getCurrentUser()) {
   setTimeout(() => openUserModal(), 600);
