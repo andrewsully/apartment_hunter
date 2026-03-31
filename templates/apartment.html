@@ -154,6 +154,13 @@
       object-fit: cover; display: block;
       transition: opacity 0.18s ease;
     }
+    #gallery-spinner {
+      position: absolute; inset: 0; z-index: 3;
+      display: none; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    #gallery-spinner.active { display: flex; }
+    #gallery-spinner svg { width: 44px; height: 44px; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5)); }
     .no-photo-placeholder {
       width: 100%; height: 100%;
       display: flex; align-items: center; justify-content: center;
@@ -606,6 +613,15 @@
       <div id="gallery-stage" onclick="openLightbox(currentPhoto)">
         {% if apt.images %}
           <img id="main-photo" src="{{ apt.images[0] }}" alt="Apartment photo" />
+          <div id="gallery-spinner" aria-hidden="true">
+            <svg viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="25" cy="25" r="20" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="4"
+                      stroke-linecap="round" stroke-dasharray="94 32">
+                <animateTransform attributeName="transform" type="rotate"
+                                  from="0 25 25" to="360 25 25" dur="0.7s" repeatCount="indefinite"/>
+              </circle>
+            </svg>
+          </div>
           <div class="gallery-overlay"><span class="expand-hint">Click to expand</span></div>
           <button class="gallery-arrow prev" id="g-prev" onclick="event.stopPropagation(); prevPhoto()">‹</button>
           <button class="gallery-arrow next" id="g-next" onclick="event.stopPropagation(); nextPhoto()">›</button>
@@ -911,13 +927,21 @@ let currentPhoto = 0;
 function showPhoto(idx) {
   if (!PHOTOS.length) return;
   currentPhoto = Math.max(0, Math.min(idx, PHOTOS.length - 1));
-  const img = document.getElementById("main-photo");
+  const img     = document.getElementById("main-photo");
+  const spinner = document.getElementById("gallery-spinner");
   if (img) {
     img.style.opacity = "0";
-    setTimeout(() => {
-      img.src = PHOTOS[currentPhoto];
+    if (spinner) spinner.classList.add("active");
+    // Swap src; hide spinner once the new image has loaded
+    img.onload = () => {
       img.style.opacity = "1";
-    }, 80);
+      if (spinner) spinner.classList.remove("active");
+    };
+    img.onerror = () => {
+      img.style.opacity = "1";
+      if (spinner) spinner.classList.remove("active");
+    };
+    img.src = PHOTOS[currentPhoto];
   }
 
   // Thumbnails
