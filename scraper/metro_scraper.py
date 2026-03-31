@@ -265,8 +265,8 @@ def scrape_detail(url: str) -> dict:
         if coord:
             extra["_coord"] = coord
 
-        # Listing photos (hosted on ygl-photos S3)
-        for img in soup.select("img[src*='ygl-photos']"):
+        # Listing photos — hosted on ygl-photos S3 or CloudFront depending on listing
+        for img in soup.select("img[src*='ygl-photos'], img[src*='cloudfront.net']"):
             src = img.get("src", "")
             if src and src not in extra["images_raw"]:
                 extra["images_raw"].append(src)
