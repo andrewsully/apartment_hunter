@@ -79,12 +79,52 @@
       background: var(--bg); border: 1px solid var(--border); color: var(--text);
       font-size: 11px; padding: 4px 8px; border-radius: 6px; cursor: pointer;
     }
-    #list-filters {
-      padding: 8px 12px; border-bottom: 1px solid var(--border);
-      display: flex; gap: 6px; flex-shrink: 0; align-items: center;
-      overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    /* sidebar action button (filter toggle) */
+    .sidebar-action-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 9px; border-radius: 7px;
+      border: 1px solid var(--border); background: transparent;
+      color: var(--muted); font-size: 12px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s; font-family: inherit; white-space: nowrap;
     }
-    #list-filters::-webkit-scrollbar { display: none; }
+    .sidebar-action-btn:hover { border-color: var(--accent); color: var(--text); }
+    .sidebar-action-btn.filter-active { border-color: var(--accent); color: var(--text); }
+
+    /* Inline filter panel */
+    #filter-drop { display: none; flex-shrink: 0; border-bottom: 1px solid var(--border); background: var(--surf); }
+    #filter-drop.open { display: block; }
+    .fdrop-opts { padding: 8px 8px 4px; display: flex; flex-direction: column; gap: 1px; }
+    .fdrop-opt {
+      display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 8px; width: 100%;
+      border: none; background: transparent; color: var(--text); font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: background 0.12s; font-family: inherit; text-align: left;
+    }
+    .fdrop-opt:hover { background: var(--surf2); }
+    .fdrop-opt.active { background: var(--surf2); }
+    .fdrop-radio-dot {
+      width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid var(--border); transition: all 0.15s;
+    }
+    .fdrop-opt.active .fdrop-radio-dot { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 3px var(--surf2); }
+
+    /* Boundary toggle row */
+    .fdrop-boundary {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 18px 14px; border-top: 1px solid var(--border);
+    }
+    .fdrop-boundary-label { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+    .toggle-pill {
+      width: 36px; height: 20px; border-radius: 99px; flex-shrink: 0;
+      background: var(--surf3); border: none; cursor: pointer;
+      position: relative; transition: background 0.2s;
+    }
+    .toggle-pill.on { background: var(--accent); }
+    .toggle-knob {
+      width: 14px; height: 14px; border-radius: 50%; background: #fff;
+      position: absolute; top: 3px; left: 3px;
+      transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .toggle-pill.on .toggle-knob { transform: translateX(16px); }
     #apt-list { flex: 1; overflow-y: auto; scrollbar-width: thin; }
 
     /* ── Apartment card ── */
@@ -580,25 +620,42 @@
   <div id="body">
     <!-- ── Sidebar ── -->
     <aside id="sidebar">
-      <!-- Filter chips — live above the list they control -->
-      <div id="list-filters">
-        <button class="chip boundary-on" id="boundary-chip" onclick="toggleBoundary()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> In Boundary</button>
-        <div class="filter-sep"></div>
-        <button class="chip active" data-cat="all">All</button>
-        <button class="chip" data-cat="yes"      style="color:var(--muted);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Yes</button>
-        <button class="chip" data-cat="maybe"    style="color:var(--muted);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg> Maybe</button>
-        <button class="chip" data-cat="no"       style="color:var(--muted);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> No</button>
-        <button class="chip" data-cat="unsorted" style="color:var(--muted);">Unsorted</button>
-      </div>
+      <!-- Sidebar header: count + filter dropdown + sort -->
       <div id="sidebar-header">
         <span id="apt-count-label">Apartments</span>
-        <select id="sort-select">
-          <option value="rent_asc">Price ↑</option>
-          <option value="rent_desc">Price ↓</option>
-          <option value="beds_desc">Beds ↓</option>
-          <option value="newest">Newest</option>
-        </select>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <button class="sidebar-action-btn" id="filter-drop-btn" onclick="toggleFilterDrop(event)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="6" y2="6"/><line x1="8" x2="16" y1="12" y2="12"/><line x1="12" x2="12" y1="18" y2="18"/></svg>
+            <span id="filter-label">All</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <select id="sort-select">
+            <option value="rent_asc">Price ↑</option>
+            <option value="rent_desc">Price ↓</option>
+            <option value="beds_desc">Beds ↓</option>
+            <option value="newest">Newest</option>
+          </select>
+        </div>
       </div>
+
+      <!-- Inline filter panel — opens below header -->
+      <div id="filter-drop">
+        <div class="fdrop-opts">
+          <button class="fdrop-opt active" data-cat="all"><span class="fdrop-radio-dot"></span>All listings</button>
+          <button class="fdrop-opt" data-cat="yes"><span class="fdrop-radio-dot"></span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="color:var(--green)"><polyline points="20 6 9 17 4 12"/></svg><span style="color:var(--green)">Yes</span></button>
+          <button class="fdrop-opt" data-cat="maybe"><span class="fdrop-radio-dot"></span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="color:var(--amber)"><line x1="5" y1="12" x2="19" y2="12"/></svg><span style="color:var(--amber)">Maybe</span></button>
+          <button class="fdrop-opt" data-cat="no"><span class="fdrop-radio-dot"></span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="color:var(--red)"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span style="color:var(--red)">No</span></button>
+          <button class="fdrop-opt" data-cat="unsorted"><span class="fdrop-radio-dot"></span><span style="color:var(--muted)">Unsorted</span></button>
+        </div>
+        <div class="fdrop-boundary">
+          <div class="fdrop-boundary-label">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>In boundary only</span>
+          </div>
+          <button class="toggle-pill on" id="boundary-pill" onclick="toggleBoundary(event)"><div class="toggle-knob"></div></button>
+        </div>
+      </div>
+
       <div id="apt-list"></div>
     </aside>
 
@@ -1192,34 +1249,47 @@ document.getElementById("notes-save-btn").addEventListener("click", async () => 
 });
 
 // ── Boundary toggle ───────────────────────────────────────────────────────────
-function toggleBoundary() {
+function toggleBoundary(e) {
+  if (e) e.stopPropagation();
   boundaryOnly = !boundaryOnly;
-  const chip = document.getElementById("boundary-chip");
-  const pinSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`;
-  chip.innerHTML = boundaryOnly ? `${pinSvg} In Boundary` : `${pinSvg} All Areas`;
-  chip.style.background = boundaryOnly ? "" : "transparent";
-  chip.style.color = boundaryOnly ? "" : "var(--muted)";
+  const pill = document.getElementById("boundary-pill");
+  if (pill) pill.classList.toggle("on", boundaryOnly);
   render();
 }
 
-// ── Category filter chips ─────────────────────────────────────────────────────
-document.querySelectorAll("[data-cat]").forEach(btn => {
-  btn.addEventListener("click", function() {
-    activeFilter = this.dataset.cat;
-    document.querySelectorAll("[data-cat]").forEach(b => {
-      const c = b.dataset.cat;
-      b.classList.remove("active");
-      if (c === "yes")   b.style.cssText = "background:transparent;color:var(--muted)";
-      if (c === "maybe") b.style.cssText = "background:transparent;color:var(--muted)";
-      if (c === "no")    b.style.cssText = "background:transparent;color:var(--muted)";
-      if (c === "all" || c === "unsorted") b.style.cssText = "";
-    });
-    if (activeFilter === "all")      this.classList.add("active");
-    else if (activeFilter === "yes")      { this.style.cssText = ""; this.classList.add("active-green"); this.classList.add("active"); }
-    else if (activeFilter === "maybe")    { this.style.cssText = ""; this.classList.add("active-amber"); this.classList.add("active"); }
-    else if (activeFilter === "no")       { this.style.cssText = ""; this.classList.add("active-red");   this.classList.add("active"); }
-    else if (activeFilter === "unsorted") this.classList.add("active");
-    render();
+// ── Filter dropdown ───────────────────────────────────────────────────────────
+function toggleFilterDrop(e) {
+  if (e) e.stopPropagation();
+  document.getElementById("filter-drop").classList.toggle("open");
+}
+document.addEventListener("click", function(e) {
+  const drop = document.getElementById("filter-drop");
+  if (drop && !drop.contains(e.target) && e.target.id !== "filter-drop-btn") {
+    drop.classList.remove("open");
+  }
+});
+
+function setFilter(cat) {
+  activeFilter = cat;
+  // Update radio dots
+  document.querySelectorAll(".fdrop-opt").forEach(b => {
+    b.classList.toggle("active", b.dataset.cat === cat);
+  });
+  // Update button label + accent state
+  const labelEl = document.getElementById("filter-label");
+  const btnEl   = document.getElementById("filter-drop-btn");
+  const labels  = { all: "All", yes: "Yes", maybe: "Maybe", no: "No", unsorted: "Unsorted" };
+  if (labelEl) labelEl.textContent = labels[cat] || "All";
+  if (btnEl)   btnEl.classList.toggle("filter-active", cat !== "all");
+  // Close panel and re-render
+  document.getElementById("filter-drop").classList.remove("open");
+  render();
+}
+
+document.querySelectorAll(".fdrop-opt").forEach(btn => {
+  btn.addEventListener("click", function(e) {
+    e.stopPropagation();
+    setFilter(this.dataset.cat);
   });
 });
 
