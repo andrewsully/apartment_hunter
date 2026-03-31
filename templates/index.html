@@ -379,6 +379,103 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
+    /* ── Onboarding overlay ── */
+    #ob-overlay {
+      position: fixed; inset: 0; z-index: 9500;
+      background: rgba(0,0,0,0.82); backdrop-filter: blur(8px);
+      display: none; align-items: center; justify-content: center; padding: 20px;
+    }
+    #ob-overlay.visible { display: flex; }
+    #ob-card {
+      background: var(--surf); border: 1px solid var(--border);
+      border-radius: 22px; width: 100%; max-width: 360px;
+      padding: 36px 28px 24px; display: flex; flex-direction: column;
+      gap: 22px; box-shadow: 0 24px 64px rgba(0,0,0,0.65);
+      animation: obCardIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes obCardIn {
+      from { opacity: 0; transform: translateY(24px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    /* Steps */
+    #ob-steps { min-height: 180px; }
+    .ob-step {
+      display: none; flex-direction: column; align-items: center;
+      text-align: center; gap: 12px;
+    }
+    .ob-step.active {
+      display: flex;
+      animation: obStepIn 0.2s ease-out;
+    }
+    @keyframes obStepIn {
+      from { opacity: 0; transform: translateX(18px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .ob-icon {
+      width: 78px; height: 78px; border-radius: 20px;
+      background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.22);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--accent); margin-bottom: 4px; flex-shrink: 0;
+    }
+    .ob-title { font-size: 21px; font-weight: 800; line-height: 1.25; }
+    .ob-body  { font-size: 14px; color: var(--muted); line-height: 1.65; max-width: 290px; }
+    .ob-body strong { color: var(--text); font-weight: 600; }
+    /* Vote demo (step 2) */
+    .ob-vote-demo { display: flex; gap: 8px; margin-bottom: 4px; }
+    .ob-vbtn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 9px 14px; border-radius: 9px;
+      font-size: 13px; font-weight: 700; border: 2px solid;
+    }
+    .ob-yes   { color: var(--green); border-color: var(--green); background: rgba(34,197,94,0.1); }
+    .ob-maybe { color: var(--amber); border-color: var(--amber); background: rgba(245,158,11,0.1); }
+    .ob-no    { color: var(--red);   border-color: var(--red);   background: rgba(239,68,68,0.1); }
+    /* Identity step user grid */
+    .ob-user-grid { display: flex; gap: 10px; width: 100%; margin-top: 4px; }
+    .ob-user-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 9px;
+      padding: 16px 10px; border-radius: 14px; border: 1.5px solid var(--border);
+      background: var(--surf2); color: var(--text); cursor: pointer;
+      font-size: 13px; font-weight: 600; font-family: inherit;
+      transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+    }
+    .ob-user-btn:hover, .ob-user-btn:active {
+      border-color: var(--accent); background: rgba(99,102,241,0.1);
+      transform: translateY(-2px);
+    }
+    .ob-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 800; color: #fff;
+    }
+    .ob-later {
+      background: none; border: none; color: var(--muted);
+      font-size: 13px; cursor: pointer; padding: 2px 0; font-family: inherit;
+      text-decoration: underline; text-underline-offset: 2px;
+    }
+    /* Dots */
+    #ob-dots { display: flex; gap: 6px; justify-content: center; }
+    .ob-dot {
+      height: 7px; width: 7px; border-radius: 99px;
+      background: var(--border); transition: all 0.25s ease;
+    }
+    .ob-dot.active { background: var(--accent); width: 20px; }
+    /* Nav bar */
+    #ob-nav { display: flex; justify-content: space-between; align-items: center; }
+    #ob-skip-btn {
+      background: none; border: none; color: var(--muted);
+      font-size: 13px; cursor: pointer; padding: 8px 4px; font-family: inherit;
+    }
+    #ob-next-btn {
+      background: var(--accent); color: #fff; border: none;
+      border-radius: 10px; padding: 12px 26px;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      font-family: inherit; transition: opacity 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #ob-next-btn:hover { opacity: 0.88; }
+    #ob-nav.hidden { display: none; }
+
     /* ── Toast ── */
     #toast {
       position: fixed; bottom: 20px; left: 50%;
@@ -759,6 +856,92 @@
 </div>
 
 <div id="toast"></div>
+
+<!-- ── First-visit onboarding ─────────────────────────────────────────────── -->
+<div id="ob-overlay">
+  <div id="ob-card">
+
+    <!-- Steps -->
+    <div id="ob-steps">
+
+      <!-- Step 0: Welcome -->
+      <div class="ob-step active">
+        <div class="ob-icon">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/></svg>
+        </div>
+        <div class="ob-title">Welcome to<br>Apartment Hunter</div>
+        <div class="ob-body">Your group's shared guide to finding the perfect place in Boston. Let's walk through how it works.</div>
+      </div>
+
+      <!-- Step 1: Browse -->
+      <div class="ob-step">
+        <div class="ob-icon" style="background:rgba(34,211,238,0.1);border-color:rgba(34,211,238,0.2);color:var(--cyan);">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
+        </div>
+        <div class="ob-title">Browse listings</div>
+        <div class="ob-body">Scroll through apartments in the list. Tap any card for photos, full details, and the location on the map. On mobile, toggle between the list and map view.</div>
+      </div>
+
+      <!-- Step 2: Vote -->
+      <div class="ob-step">
+        <div class="ob-vote-demo">
+          <div class="ob-vbtn ob-yes"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Yes</div>
+          <div class="ob-vbtn ob-maybe"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg> Maybe</div>
+          <div class="ob-vbtn ob-no"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> No</div>
+        </div>
+        <div class="ob-title">Vote on each place</div>
+        <div class="ob-body">Open any listing and cast your vote. Your picks are saved to your profile and shared with the group — leave notes too.</div>
+      </div>
+
+      <!-- Step 3: Compare -->
+      <div class="ob-step">
+        <div class="ob-icon" style="background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.2);color:var(--green);">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="ob-title">Compare with the group</div>
+        <div class="ob-body">Tap <strong>Group</strong> in the profile menu to see everyone's votes side by side — ranked by consensus so the best matches rise to the top.</div>
+      </div>
+
+      <!-- Step 4: Identity -->
+      <div class="ob-step">
+        <div class="ob-title" style="margin-top:8px;">One last thing —<br>who are you?</div>
+        <div class="ob-body">Your votes and notes will be saved under your name so the group can compare lists.</div>
+        <div class="ob-user-grid">
+          <button class="ob-user-btn" onclick="obSelectUser('andrew')">
+            <div class="ob-avatar" style="background:#6366f1">A</div>
+            <span>Andrew</span>
+          </button>
+          <button class="ob-user-btn" onclick="obSelectUser('liam')">
+            <div class="ob-avatar" style="background:#22d3ee">L</div>
+            <span>Liam</span>
+          </button>
+          <button class="ob-user-btn" onclick="obSelectUser('joe')">
+            <div class="ob-avatar" style="background:#f59e0b">J</div>
+            <span>Joe</span>
+          </button>
+        </div>
+        <button class="ob-later" onclick="obSkip()">I'll decide later</button>
+      </div>
+
+    </div><!-- /ob-steps -->
+
+    <!-- Dot indicators -->
+    <div id="ob-dots">
+      <span class="ob-dot active"></span>
+      <span class="ob-dot"></span>
+      <span class="ob-dot"></span>
+      <span class="ob-dot"></span>
+      <span class="ob-dot"></span>
+    </div>
+
+    <!-- Nav buttons (hidden on last step) -->
+    <div id="ob-nav">
+      <button id="ob-skip-btn" onclick="obSkip()">Skip</button>
+      <button id="ob-next-btn" onclick="obNext()">Continue</button>
+    </div>
+
+  </div><!-- /ob-card -->
+</div><!-- /ob-overlay -->
 
 <script>
 const BOUNDARY = {{ boundary | safe }};
@@ -1316,14 +1499,52 @@ function toggleMobileView() {
   if (mobileMapActive && drawerApt) closeDrawer();
 }
 
+// ── Onboarding ────────────────────────────────────────────────────────────────
+let _obStep = 0;
+const _OB_TOTAL = 5;
+
+function initOnboarding() {
+  if (localStorage.getItem("ob_done")) return;
+  document.getElementById("ob-overlay").classList.add("visible");
+}
+
+function obNext() {
+  const steps = document.querySelectorAll(".ob-step");
+  const dots  = document.querySelectorAll(".ob-dot");
+  steps[_obStep].classList.remove("active");
+  dots[_obStep].classList.remove("active");
+  _obStep++;
+  steps[_obStep].classList.add("active");
+  dots[_obStep].classList.add("active");
+  // Hide nav bar on last step (user picks via identity buttons)
+  if (_obStep === _OB_TOTAL - 1) {
+    document.getElementById("ob-nav").classList.add("hidden");
+  }
+}
+
+function obSkip() {
+  localStorage.setItem("ob_done", "1");
+  document.getElementById("ob-overlay").classList.remove("visible");
+}
+
+function obSelectUser(user) {
+  localStorage.setItem("apartment_user", user);
+  localStorage.setItem("ob_done", "1");
+  document.getElementById("ob-overlay").classList.remove("visible");
+  updateUserIndicator();
+  render();
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 updateUserIndicator();
 updatePriceModeDisplay();
-// Show user modal on first visit
-if (!getCurrentUser()) {
+load();
+// Show onboarding on first visit; it handles identity selection internally.
+// Fall back to the user modal only if they skipped identity during onboarding.
+initOnboarding();
+if (localStorage.getItem("ob_done") && !getCurrentUser()) {
   setTimeout(() => openUserModal(), 600);
 }
-load();
 </script>
 </body>
 </html>
