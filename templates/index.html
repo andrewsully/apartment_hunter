@@ -87,6 +87,16 @@
     }
     .apt-card:hover  { background: var(--surf2); }
     .apt-card.active { background: rgba(99,102,241,0.1); }
+    .card-expand-btn {
+      position: absolute; top: 8px; right: 8px;
+      font-size: 10px; font-weight: 600; color: var(--muted);
+      background: var(--surf); border: 1px solid var(--border);
+      border-radius: 5px; padding: 2px 6px;
+      text-decoration: none; opacity: 0; transition: opacity 0.15s, color 0.15s;
+      z-index: 2;
+    }
+    .apt-card:hover .card-expand-btn { opacity: 1; }
+    .card-expand-btn:hover { color: var(--accent); border-color: var(--accent); }
     .apt-card.active::before {
       content: ""; position: absolute; left: 0; top: 0; bottom: 0;
       width: 3px; background: var(--accent); border-radius: 0 2px 2px 0;
@@ -173,6 +183,13 @@
       padding: 4px 6px; border-radius: 5px; font-size: 16px; line-height: 1; flex-shrink: 0;
     }
     .drawer-close:hover { background: var(--surf2); color: var(--text); }
+    .drawer-expand {
+      display: inline-flex; align-items: center; gap: 4px;
+      text-decoration: none; font-size: 11px; font-weight: 600; color: var(--muted);
+      padding: 4px 9px; border-radius: 6px; border: 1px solid var(--border);
+      background: transparent; transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
+    }
+    .drawer-expand:hover { background: var(--surf2); color: var(--accent); border-color: var(--accent); }
 
     .drawer-body { overflow-y: auto; padding: 14px 18px 24px; scrollbar-width: thin; }
 
@@ -285,6 +302,84 @@
       box-shadow: 0 6px 24px rgba(0,0,0,0.4); pointer-events: none;
     }
     #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── User identity button ── */
+    .user-btn {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--surf2); border: 1px solid var(--border);
+      border-radius: 99px; padding: 4px 10px 4px 5px;
+      cursor: pointer; transition: all 0.15s; flex-shrink: 0;
+    }
+    .user-btn:hover { border-color: var(--accent); }
+    .user-avatar-sm {
+      width: 22px; height: 22px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 800; color: #fff; flex-shrink: 0;
+    }
+    .user-name-sm { font-size: 11px; font-weight: 600; color: var(--text); }
+    .user-btn-ghost {
+      display: flex; align-items: center; gap: 5px;
+      background: transparent; border: 1px dashed var(--border);
+      border-radius: 99px; padding: 4px 10px;
+      cursor: pointer; color: var(--muted); font-size: 11px; font-weight: 500;
+      transition: all 0.15s; flex-shrink: 0;
+    }
+    .user-btn-ghost:hover { border-color: var(--accent); color: var(--text); }
+
+    /* ── User modal ── */
+    #user-modal {
+      position: fixed; inset: 0; z-index: 8000;
+      background: rgba(0,0,0,0.72);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s;
+      backdrop-filter: blur(4px);
+    }
+    #user-modal.open { opacity: 1; pointer-events: all; }
+    .user-modal-box {
+      background: var(--surf);
+      border: 1px solid var(--border);
+      border-radius: 16px; padding: 32px;
+      width: min(480px, 92vw);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.65);
+      position: relative;
+    }
+    .user-modal-title { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+    .user-modal-sub   { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.5; }
+    .user-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .user-card {
+      background: var(--surf2); border: 2px solid var(--border);
+      border-radius: 12px; padding: 20px 10px 16px; text-align: center;
+      cursor: pointer; transition: all 0.18s;
+    }
+    .user-card:hover {
+      border-color: var(--card-color); background: var(--surf3);
+      transform: translateY(-2px);
+    }
+    .user-card.selected {
+      border-color: var(--card-color);
+      background: color-mix(in srgb, var(--card-color) 12%, var(--surf2));
+    }
+    .user-avatar-lg {
+      width: 52px; height: 52px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 800; margin: 0 auto 10px; color: #fff;
+    }
+    .user-card-name { font-size: 14px; font-weight: 700; color: var(--text); }
+    .user-modal-close {
+      position: absolute; top: 14px; right: 16px;
+      background: none; border: none; color: var(--muted);
+      font-size: 18px; cursor: pointer; padding: 4px 7px; border-radius: 5px;
+    }
+    .user-modal-close:hover { background: var(--surf2); color: var(--text); }
+
+    /* disabled state when no user picked */
+    .needs-user {
+      opacity: 0.45; pointer-events: none; cursor: not-allowed;
+    }
+    .no-user-hint {
+      font-size: 11px; color: var(--muted); font-style: italic; margin-top: 6px;
+    }
   </style>
 </head>
 <body>
@@ -302,12 +397,15 @@
       <button class="chip boundary-on" id="boundary-chip" onclick="toggleBoundary()">📍 In Boundary</button>
       <div class="filter-sep"></div>
       <!-- Category filter -->
-      <span style="font-size:11px;color:var(--muted);font-weight:500;">LIST</span>
+      <span style="font-size:11px;color:var(--muted);font-weight:500;">MY LIST</span>
       <button class="chip active" data-cat="all">All</button>
       <button class="chip active-green" data-cat="yes" style="background:transparent;color:var(--muted);">✓ Yes</button>
       <button class="chip active-amber" data-cat="maybe" style="background:transparent;color:var(--muted);">? Maybe</button>
       <button class="chip active-red"   data-cat="no"    style="background:transparent;color:var(--muted);">✗ No</button>
       <button class="chip" data-cat="unsorted">Unsorted</button>
+      <div class="filter-sep"></div>
+      <!-- User identity -->
+      <div id="user-indicator"></div>
     </div>
   </header>
 
@@ -340,6 +438,7 @@
       <div class="drawer-addr" id="d-addr"></div>
       <div class="drawer-sub"  id="d-sub"></div>
     </div>
+    <a id="drawer-expand-btn" href="#" class="drawer-expand">Full View ↗</a>
     <button class="drawer-close" id="drawer-close-btn">✕</button>
   </div>
   <div class="drawer-body">
@@ -375,10 +474,83 @@
   </div>
 </div>
 
+<!-- ── User identity modal ── -->
+<div id="user-modal">
+  <div class="user-modal-box">
+    <button class="user-modal-close" onclick="closeUserModal()">✕</button>
+    <div class="user-modal-title">Who are you?</div>
+    <div class="user-modal-sub">Pick your identity — your votes and notes will be saved under your name so you can compare with the group.</div>
+    <div class="user-cards">
+      <div class="user-card" style="--card-color:#6366f1" onclick="selectUser('andrew')">
+        <div class="user-avatar-lg" style="background:#6366f1">A</div>
+        <div class="user-card-name">Andrew</div>
+      </div>
+      <div class="user-card" style="--card-color:#22d3ee" onclick="selectUser('liam')">
+        <div class="user-avatar-lg" style="background:#22d3ee">L</div>
+        <div class="user-card-name">Liam</div>
+      </div>
+      <div class="user-card" style="--card-color:#f59e0b" onclick="selectUser('joe')">
+        <div class="user-avatar-lg" style="background:#f59e0b">J</div>
+        <div class="user-card-name">Joe</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
 const BOUNDARY = {{ boundary | safe }};
+
+// ── User identity ─────────────────────────────────────────────────────────────
+const USER_CONFIG = {
+  andrew: { name: "Andrew", initial: "A", color: "#6366f1" },
+  liam:   { name: "Liam",   initial: "L", color: "#22d3ee" },
+  joe:    { name: "Joe",    initial: "J", color: "#f59e0b" },
+};
+
+function getCurrentUser() {
+  return localStorage.getItem("apartment_user") || null;
+}
+
+function openUserModal() {
+  const user = getCurrentUser();
+  document.querySelectorAll(".user-card").forEach(c => {
+    c.classList.toggle("selected", c.onclick.toString().includes(`'${user}'`));
+  });
+  document.getElementById("user-modal").classList.add("open");
+}
+
+function closeUserModal() {
+  document.getElementById("user-modal").classList.remove("open");
+}
+
+function selectUser(user) {
+  localStorage.setItem("apartment_user", user);
+  closeUserModal();
+  updateUserIndicator();
+  render();
+  if (drawerApt) openDrawer(drawerApt);
+}
+
+function updateUserIndicator() {
+  const user = getCurrentUser();
+  const el = document.getElementById("user-indicator");
+  if (user && USER_CONFIG[user]) {
+    const u = USER_CONFIG[user];
+    el.innerHTML = `<button class="user-btn" onclick="openUserModal()">
+      <div class="user-avatar-sm" style="background:${u.color}">${u.initial}</div>
+      <span class="user-name-sm">${u.name}</span>
+    </button>`;
+  } else {
+    el.innerHTML = `<button class="user-btn-ghost" onclick="openUserModal()">👤 Who are you?</button>`;
+  }
+}
+
+// Close modal on backdrop click
+document.getElementById("user-modal").addEventListener("click", function(e) {
+  if (e.target === this) closeUserModal();
+});
 
 // ── Map init ──────────────────────────────────────────────────────────────────
 const map = L.map("map", { zoomControl: true }).setView([42.345, -71.082], 14);
@@ -412,9 +584,15 @@ function toast(msg) {
   t._t = setTimeout(() => t.classList.remove("show"), 2200);
 }
 
+function getUserCat(apt) {
+  const user = getCurrentUser();
+  if (!user) return apt.list_category || "unsorted";
+  return apt.user_ratings?.[user]?.list_category || "unsorted";
+}
+
 function getFiltered() {
   let list = boundaryOnly ? allApts.filter(a => a.within_boundary) : allApts;
-  if (activeFilter !== "all") list = list.filter(a => a.list_category === activeFilter);
+  if (activeFilter !== "all") list = list.filter(a => getUserCat(a) === activeFilter);
   return sortList(list);
 }
 
@@ -466,8 +644,8 @@ function renderList(apts) {
       ? `<img class="apt-thumb" src="${a.images[0]}" loading="lazy" alt="" />`
       : `<div class="apt-thumb-ph">🏠</div>`;
 
-    const cat = a.list_category && a.list_category !== "unsorted" ? a.list_category : null;
-    const catPill = cat ? `<span class="cat-pill ${cat}">${cat}</span>` : "";
+    const cat = getUserCat(a);
+    const catPill = cat && cat !== "unsorted" ? `<span class="cat-pill ${cat}">${cat}</span>` : "";
     const nofeePill = a.no_fee ? `<span class="tag nofee">No Fee</span>` : "";
     const boundaryPill = a.within_boundary
       ? `<span class="tag inside">In Area</span>`
@@ -486,6 +664,7 @@ function renderList(apts) {
         <div class="apt-meta">${a.bedrooms ?? "?"}bd / ${a.bathrooms ?? "?"}ba${a.neighborhood ? " · " + a.neighborhood : ""}${a.available_from ? " · avail " + a.available_from : ""}</div>
         <div class="apt-tags">${boundaryPill}${nofeePill}${sqftPill}</div>
       </div>
+      <a href="/apartment/${a.id}" class="card-expand-btn" onclick="event.stopPropagation()">↗</a>
     </div>`;
   }).join("");
 }
@@ -494,7 +673,7 @@ function renderList(apts) {
 const CAT_COLORS = { yes: "#22c55e", maybe: "#f59e0b", no: "#ef4444", unsorted: "#6366f1" };
 
 function makeMarker(a) {
-  const color = CAT_COLORS[a.list_category] || CAT_COLORS.unsorted;
+  const color = CAT_COLORS[getUserCat(a)] || CAT_COLORS.unsorted;
   const size = a.within_boundary ? 14 : 10;
   const opacity = a.within_boundary ? "1" : "0.45";
   return L.divIcon({
@@ -559,8 +738,11 @@ let drawerApt = null;
 
 function openDrawer(apt) {
   drawerApt = apt;
+  const user = getCurrentUser();
+  const userRating = (user && apt.user_ratings?.[user]) || {};
 
   document.getElementById("d-addr").textContent = apt.address;
+  document.getElementById("drawer-expand-btn").href = `/apartment/${apt.id}`;
 
   const subParts = [apt.neighborhood, apt.within_boundary ? "In your boundary" : "Outside boundary"].filter(Boolean);
   document.getElementById("d-sub").textContent = subParts.join(" · ");
@@ -585,17 +767,43 @@ function openDrawer(apt) {
     wrap.innerHTML = `<div class="no-photos">No photos available</div>`;
   }
 
-  // Category buttons
+  // Category buttons — show current user's vote; disable if no user
+  const currentCat = userRating.list_category || "unsorted";
   document.querySelectorAll(".cat-btn").forEach(btn => {
     const c = btn.dataset.cat;
     btn.className = `cat-btn ${c}`;
-    if (apt.list_category === c) btn.classList.add(`on-${c}`);
+    if (currentCat === c) btn.classList.add(`on-${c}`);
+    btn.disabled = !user;
+    btn.style.opacity = user ? "" : "0.4";
+    btn.style.cursor  = user ? "" : "not-allowed";
   });
 
-  document.getElementById("notes-ta").value = apt.notes || "";
+  // Notes — show current user's notes
+  document.getElementById("notes-ta").value = userRating.notes || "";
+  document.getElementById("notes-ta").disabled = !user;
+  document.getElementById("notes-ta").style.opacity = user ? "" : "0.4";
+  document.getElementById("notes-save-btn").disabled = !user;
+  document.getElementById("notes-save-btn").style.opacity = user ? "" : "0.4";
   document.getElementById("notes-feedback").classList.remove("show");
-  document.getElementById("d-source-link").href = apt.source_url || "#";
 
+  // No-user hint
+  let hint = document.getElementById("d-no-user-hint");
+  if (!user) {
+    if (!hint) {
+      hint = document.createElement("div");
+      hint.id = "d-no-user-hint";
+      hint.style.cssText = "font-size:11px;color:var(--muted);font-style:italic;margin-bottom:8px;";
+      document.querySelector(".cat-row").insertAdjacentElement("beforebegin", hint);
+    }
+    hint.textContent = "👤 Select who you are to vote";
+    hint.style.display = "";
+    hint.onclick = openUserModal;
+    hint.style.cursor = "pointer";
+  } else if (hint) {
+    hint.style.display = "none";
+  }
+
+  document.getElementById("d-source-link").href = apt.source_url || "#";
   document.getElementById("drawer").classList.add("open");
 }
 
@@ -612,14 +820,22 @@ document.getElementById("drawer-close-btn").addEventListener("click", closeDrawe
 document.querySelectorAll(".cat-btn").forEach(btn => {
   btn.addEventListener("click", async function() {
     if (!drawerApt) return;
+    const user = getCurrentUser();
+    if (!user) { openUserModal(); return; }
     const cat = this.dataset.cat;
     await fetch(`/api/apartments/${drawerApt.id}/rank`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ list_category: cat }),
+      body: JSON.stringify({ user, list_category: cat }),
     });
-    drawerApt.list_category = cat;
+
+    // Update local cache
+    if (!drawerApt.user_ratings) drawerApt.user_ratings = {};
+    drawerApt.user_ratings[user] = { ...(drawerApt.user_ratings[user] || {}), list_category: cat };
     const apt = allApts.find(a => a.id === drawerApt.id);
-    if (apt) apt.list_category = cat;
+    if (apt) {
+      if (!apt.user_ratings) apt.user_ratings = {};
+      apt.user_ratings[user] = { ...(apt.user_ratings[user] || {}), list_category: cat };
+    }
 
     document.querySelectorAll(".cat-btn").forEach(b => {
       const c = b.dataset.cat;
@@ -628,7 +844,7 @@ document.querySelectorAll(".cat-btn").forEach(btn => {
     });
 
     const m = markers[drawerApt.id];
-    if (m) m.setIcon(makeMarker({ ...drawerApt, list_category: cat }));
+    if (m) m.setIcon(makeMarker(drawerApt));
 
     render();
     toast(`Marked as "${cat}"`);
@@ -638,14 +854,20 @@ document.querySelectorAll(".cat-btn").forEach(btn => {
 // ── Notes ─────────────────────────────────────────────────────────────────────
 document.getElementById("notes-save-btn").addEventListener("click", async () => {
   if (!drawerApt) return;
+  const user = getCurrentUser();
+  if (!user) { openUserModal(); return; }
   const notes = document.getElementById("notes-ta").value;
   await fetch(`/api/apartments/${drawerApt.id}/rank`, {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ notes }),
+    body: JSON.stringify({ user, notes }),
   });
+  if (!drawerApt.user_ratings) drawerApt.user_ratings = {};
+  drawerApt.user_ratings[user] = { ...(drawerApt.user_ratings[user] || {}), notes };
   const apt = allApts.find(a => a.id === drawerApt.id);
-  if (apt) apt.notes = notes;
-  if (drawerApt) drawerApt.notes = notes;
+  if (apt) {
+    if (!apt.user_ratings) apt.user_ratings = {};
+    apt.user_ratings[user] = { ...(apt.user_ratings[user] || {}), notes };
+  }
   const fb = document.getElementById("notes-feedback");
   fb.classList.add("show");
   setTimeout(() => fb.classList.remove("show"), 2000);
@@ -688,6 +910,11 @@ document.getElementById("sort-select").addEventListener("change", render);
 map.on("click", () => { if (drawerApt) closeDrawer(); });
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
+updateUserIndicator();
+// Show user modal on first visit
+if (!getCurrentUser()) {
+  setTimeout(() => openUserModal(), 600);
+}
 load();
 </script>
 </body>

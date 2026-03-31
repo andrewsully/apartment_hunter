@@ -3,6 +3,21 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
+VALID_USERS = {"andrew", "liam", "joe"}
+
+
+class UserRating(db.Model):
+    __tablename__ = "user_ratings"
+
+    id = db.Column(db.Integer, primary_key=True)
+    apartment_id = db.Column(db.Integer, db.ForeignKey("apartments.id"), nullable=False)
+    user = db.Column(db.String(50), nullable=False)
+    list_category = db.Column(db.String(50), default="unsorted")
+    notes = db.Column(db.Text, default="")
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (db.UniqueConstraint("apartment_id", "user", name="uq_apt_user"),)
+
 
 class Apartment(db.Model):
     __tablename__ = "apartments"
@@ -40,9 +55,8 @@ class Apartment(db.Model):
     # Images — stored as JSON list of local paths
     images_json = db.Column(db.Text, default="[]")
 
-    # User ranking / categorization
-    rank = db.Column(db.Integer, default=None)
-    list_category = db.Column(db.String(50), default="unsorted")  # unsorted | yes | maybe | no
+    # Legacy single-user fields (kept for backward compat; prefer user_ratings)
+    list_category = db.Column(db.String(50), default="unsorted")
     notes = db.Column(db.Text, default="")
 
     # Meta
@@ -50,8 +64,23 @@ class Apartment(db.Model):
     scraped_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # Per-user ratings relationship
+    user_ratings = db.relationship(
+        "UserRating", backref="apartment", lazy="joined",
+        cascade="all, delete-orphan",
+    )
+
     def to_dict(self):
         import json
+
+        # Build per-user ratings dict
+        ratings = {}
+        for r in self.user_ratings:
+            ratings[r.user] = {
+                "list_category": r.list_category or "unsorted",
+                "notes": r.notes or "",
+            }
+
         return {
             "id": self.id,
             "source_id": self.source_id,
@@ -71,8 +100,10 @@ class Apartment(db.Model):
             "longitude": self.longitude,
             "within_boundary": self.within_boundary,
             "images": json.loads(self.images_json or "[]"),
-            "rank": self.rank,
-            "list_category": self.list_category,
-            "notes": self.notes,
+            # user_ratings keyed by username
+            "user_ratings": ratings,
+            # Legacy top-level fields — derived from Andrew's rating for backward compat
+            "list_category": ratings.get("andrew", {}).get("list_category", self.list_category or "unsorted"),
+            "notes": ratings.get("andrew", {}).get("notes", self.notes or ""),
             "scraped_at": self.scraped_at.isoformat() if self.scraped_at else None,
         }

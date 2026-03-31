@@ -3,7 +3,7 @@ import json
 import logging
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_from_directory
-from models import db, Apartment
+from models import db, Apartment, UserRating, VALID_USERS
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -44,6 +44,30 @@ def index():
         boundary=json.dumps(boundary),
         total_apartments=active,
         last_scraped=last_scraped,
+    )
+
+
+@app.route("/apartment/<int:apt_id>")
+def apartment_detail(apt_id):
+    """Full detail page for a single apartment."""
+    apt = Apartment.query.get_or_404(apt_id)
+    boundary = load_boundary()
+
+    # Sorted list of active IDs for prev/next navigation
+    all_ids = [a.id for a in Apartment.query.filter_by(active=True).order_by(Apartment.rent.asc()).all()]
+    try:
+        idx = all_ids.index(apt_id)
+        prev_id = all_ids[idx - 1] if idx > 0 else None
+        next_id = all_ids[idx + 1] if idx < len(all_ids) - 1 else None
+    except ValueError:
+        prev_id = next_id = None
+
+    return render_template(
+        "apartment.html",
+        apt=apt.to_dict(),
+        prev_id=prev_id,
+        next_id=next_id,
+        boundary=json.dumps(boundary),
     )
 
 
@@ -91,12 +115,25 @@ def get_apartments():
 def rank_apartment(apt_id):
     data = request.get_json()
     apt = Apartment.query.get_or_404(apt_id)
-    if "rank" in data:
-        apt.rank = data["rank"]
-    if "list_category" in data:
-        apt.list_category = data["list_category"]
-    if "notes" in data:
-        apt.notes = data["notes"]
+    user = data.get("user", "").lower().strip()
+
+    if user and user in VALID_USERS:
+        # Per-user rating
+        rating = UserRating.query.filter_by(apartment_id=apt_id, user=user).first()
+        if not rating:
+            rating = UserRating(apartment_id=apt_id, user=user)
+            db.session.add(rating)
+        if "list_category" in data:
+            rating.list_category = data["list_category"]
+        if "notes" in data:
+            rating.notes = data["notes"]
+    else:
+        # Legacy fallback (no user supplied)
+        if "list_category" in data:
+            apt.list_category = data["list_category"]
+        if "notes" in data:
+            apt.notes = data["notes"]
+
     db.session.commit()
     return jsonify({"success": True})
 
@@ -141,8 +178,30 @@ def scrape_status():
     })
 
 
+def migrate_legacy_votes():
+    """One-time: move apartment.list_category / notes → andrew's UserRating row."""
+    migrated = 0
+    for apt in Apartment.query.all():
+        legacy_cat = apt.list_category
+        if legacy_cat and legacy_cat != "unsorted":
+            exists = UserRating.query.filter_by(apartment_id=apt.id, user="andrew").first()
+            if not exists:
+                rating = UserRating(
+                    apartment_id=apt.id,
+                    user="andrew",
+                    list_category=legacy_cat,
+                    notes=apt.notes or "",
+                )
+                db.session.add(rating)
+                migrated += 1
+    if migrated:
+        db.session.commit()
+        logger.info("Migrated %d legacy votes → andrew's UserRating rows", migrated)
+
+
 if __name__ == "__main__":
     with app.app_context():
         os.makedirs("data", exist_ok=True)
         db.create_all()
+        migrate_legacy_votes()
     app.run(debug=True, port=5001)

@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ apt.address }} — Apartment Hunter</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0f1117;
+      --surf:    #1a1d27;
+      --surf2:   #22263a;
+      --surf3:   #2a2f45;
+      --border:  #2a2d3a;
+      --accent:  #6366f1;
+      --cyan:    #22d3ee;
+      --green:   #22c55e;
+      --amber:   #f59e0b;
+      --red:     #ef4444;
+      --text:    #e2e8f0;
+      --muted:   #64748b;
+      --nav-h:   52px;
+    }
+
+    html, body {
+      height: 100%; font-family: 'Inter', sans-serif;
+      background: var(--bg); color: var(--text);
+    }
+
+    /* ── Top nav ── */
+    #topnav {
+      position: sticky; top: 0; z-index: 200;
+      height: var(--nav-h);
+      background: var(--surf);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 16px; gap: 12px;
+    }
+    .nav-back {
+      display: flex; align-items: center; gap: 6px;
+      text-decoration: none; color: var(--muted);
+      font-size: 13px; font-weight: 500;
+      padding: 6px 10px; border-radius: 7px;
+      transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
+    }
+    .nav-back:hover { background: var(--surf2); color: var(--text); }
+    .nav-divider { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+    .nav-title {
+      flex: 1; min-width: 0;
+      display: flex; flex-direction: column; gap: 1px;
+    }
+    .nav-addr {
+      font-size: 13.5px; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .nav-sub { font-size: 11px; color: var(--muted); }
+    .nav-sub .badge-in   { color: var(--accent); }
+    .nav-sub .badge-out  { color: var(--muted); }
+    .nav-arrows { display: flex; gap: 6px; flex-shrink: 0; }
+    .nav-arrow {
+      display: flex; align-items: center; gap: 4px;
+      text-decoration: none; font-size: 12px; font-weight: 600;
+      color: var(--muted); padding: 6px 10px;
+      border: 1px solid var(--border); border-radius: 7px;
+      background: transparent; transition: all 0.15s; white-space: nowrap;
+    }
+    .nav-arrow:hover { background: var(--surf2); color: var(--text); border-color: var(--accent); }
+
+    /* ── Main layout ── */
+    #main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 400px;
+      min-height: calc(100vh - var(--nav-h));
+    }
+
+    /* ── Left column ── */
+    #detail-left {
+      padding: 24px;
+      display: flex; flex-direction: column; gap: 20px;
+      border-right: 1px solid var(--border);
+    }
+
+    /* ── Photo gallery ── */
+    #gallery { display: flex; flex-direction: column; gap: 10px; }
+
+    #gallery-stage {
+      position: relative;
+      border-radius: 12px; overflow: hidden;
+      background: var(--surf2);
+      aspect-ratio: 16 / 10;
+      cursor: pointer;
+    }
+    #gallery-stage:hover .gallery-overlay { opacity: 1; }
+
+    #main-photo {
+      width: 100%; height: 100%;
+      object-fit: cover; display: block;
+      transition: opacity 0.18s ease;
+    }
+    .no-photo-placeholder {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 8px;
+      color: var(--muted); font-size: 14px;
+    }
+    .no-photo-placeholder span { font-size: 40px; }
+
+    .gallery-overlay {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0.3);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.18s;
+      gap: 12px;
+    }
+    .gallery-overlay .expand-hint {
+      background: rgba(0,0,0,0.7); color: #fff;
+      font-size: 12px; font-weight: 600;
+      padding: 6px 14px; border-radius: 99px;
+    }
+
+    .gallery-arrow {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      background: rgba(0,0,0,0.6); color: #fff;
+      border: none; cursor: pointer; font-size: 22px; font-weight: 300;
+      width: 40px; height: 60px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s; z-index: 2;
+      opacity: 0.7;
+    }
+    .gallery-arrow:hover { background: rgba(0,0,0,0.85); opacity: 1; }
+    .gallery-arrow.prev { left: 10px; }
+    .gallery-arrow.next { right: 10px; }
+    .gallery-arrow.hidden { display: none; }
+
+    .gallery-counter {
+      position: absolute; bottom: 12px; right: 14px;
+      background: rgba(0,0,0,0.65); color: #fff;
+      font-size: 11px; font-weight: 600; padding: 3px 9px;
+      border-radius: 99px; pointer-events: none; z-index: 2;
+    }
+
+    #gallery-thumbs {
+      display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none;
+      padding-bottom: 2px;
+    }
+    #gallery-thumbs::-webkit-scrollbar { display: none; }
+    .thumb-img {
+      width: 72px; height: 52px; min-width: 72px;
+      object-fit: cover; border-radius: 6px;
+      cursor: pointer; border: 2px solid transparent;
+      transition: border-color 0.15s, opacity 0.15s;
+      opacity: 0.55;
+    }
+    .thumb-img.active  { border-color: var(--accent); opacity: 1; }
+    .thumb-img:hover   { opacity: 0.85; }
+
+    /* ── Mini map ── */
+    #mini-map-wrap {
+      border-radius: 10px; overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    #mini-map { height: 200px; }
+
+    /* ── Right column ── */
+    #detail-right {
+      padding: 24px 22px;
+      overflow-y: auto;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+
+    /* Rent + header */
+    .rent-amount {
+      font-size: 34px; font-weight: 800; color: var(--cyan);
+      line-height: 1; letter-spacing: -1px;
+    }
+    .rent-per { font-size: 14px; font-weight: 400; color: var(--muted); }
+    .rent-address {
+      font-size: 14px; font-weight: 600; color: var(--text);
+      margin-top: 6px;
+    }
+    .rent-neigh { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* Stat pills */
+    .stat-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+    .stat-pill {
+      background: var(--surf2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 9px 14px; text-align: center;
+      flex: 1; min-width: 64px;
+    }
+    .stat-pill .val { font-size: 20px; font-weight: 700; line-height: 1.2; }
+    .stat-pill .lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+    /* Info rows */
+    .info-row {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surf2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 13px; font-size: 12.5px;
+    }
+    .info-row .icon { font-size: 15px; flex-shrink: 0; }
+    .info-row .label { color: var(--muted); margin-right: 2px; }
+    .info-row strong { color: var(--text); font-weight: 600; }
+    .info-row .spacer { flex: 1; }
+    .badge {
+      font-size: 10.5px; font-weight: 700; padding: 3px 8px;
+      border-radius: 99px; letter-spacing: 0.3px;
+    }
+    .badge-green { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: var(--green); }
+    .badge-accent { background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.3); color: var(--accent); }
+    .badge-muted  { background: var(--surf3); border: 1px solid var(--border); color: var(--muted); }
+
+    /* Section */
+    .section { display: flex; flex-direction: column; gap: 8px; }
+    .section-title {
+      font-size: 10px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.8px;
+    }
+
+    /* Vote buttons */
+    .vote-row { display: flex; gap: 8px; }
+    .vote-btn {
+      flex: 1; padding: 10px 8px;
+      border-radius: 9px; font-size: 13px; font-weight: 700;
+      cursor: pointer; border: 1.5px solid var(--border);
+      background: transparent; color: var(--muted);
+      transition: all 0.15s; letter-spacing: 0.2px;
+    }
+    .vote-btn:hover { border-color: currentColor; }
+    .vote-btn.yes   { color: var(--green); }
+    .vote-btn.maybe { color: var(--amber); }
+    .vote-btn.no    { color: var(--red); }
+    .vote-btn.on-yes   { background: rgba(34,197,94,0.12);  border-color: var(--green);  color: var(--green); }
+    .vote-btn.on-maybe { background: rgba(245,158,11,0.12); border-color: var(--amber);  color: var(--amber); }
+    .vote-btn.on-no    { background: rgba(239,68,68,0.08);  border-color: var(--red);    color: var(--red); }
+
+    /* Roommates placeholder */
+    .roommates-row {
+      display: flex; gap: 8px;
+    }
+    .roommate-slot {
+      flex: 1; padding: 10px 8px;
+      background: var(--surf2); border: 1px solid var(--border);
+      border-radius: 9px; text-align: center;
+    }
+    .roommate-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--surf3); border: 1.5px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; margin: 0 auto 5px;
+      color: var(--muted);
+    }
+    .roommate-name { font-size: 10px; font-weight: 600; color: var(--muted); }
+    .roommate-vote { font-size: 10px; color: var(--muted); margin-top: 2px; font-style: italic; }
+    .roommates-coming {
+      font-size: 11px; color: var(--muted); font-style: italic;
+      text-align: center; padding: 6px 0 0;
+    }
+
+    /* Notes */
+    #notes-ta {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); border-radius: 8px; padding: 10px 12px;
+      font-size: 13px; font-family: inherit; resize: vertical; min-height: 80px;
+      transition: border-color 0.15s;
+    }
+    #notes-ta:focus { outline: none; border-color: var(--accent); }
+    .notes-footer { display: flex; align-items: center; gap: 10px; }
+    #notes-save-btn {
+      padding: 7px 18px; border-radius: 7px; font-size: 12.5px; font-weight: 600;
+      cursor: pointer; border: none; background: var(--accent); color: #fff;
+      transition: background 0.15s;
+    }
+    #notes-save-btn:hover { background: #4f52e8; }
+    #notes-feedback { font-size: 11.5px; color: var(--green); opacity: 0; transition: opacity 0.3s; }
+    #notes-feedback.show { opacity: 1; }
+
+    /* Source link */
+    .source-btn {
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      text-decoration: none; color: var(--muted);
+      background: var(--surf2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px; font-size: 12.5px; font-weight: 500;
+      transition: all 0.15s; margin-top: 4px;
+    }
+    .source-btn:hover { border-color: var(--accent); color: var(--text); }
+
+    /* Section divider */
+    .divider { height: 1px; background: var(--border); }
+
+    /* ── User identity button ── */
+    .user-btn {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--surf2); border: 1px solid var(--border);
+      border-radius: 99px; padding: 4px 10px 4px 5px;
+      cursor: pointer; transition: all 0.15s; text-decoration: none;
+    }
+    .user-btn:hover { border-color: var(--accent); }
+    .user-avatar-sm {
+      width: 22px; height: 22px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 800; color: #fff;
+    }
+    .user-name-sm { font-size: 11px; font-weight: 600; color: var(--text); }
+    .user-btn-ghost {
+      display: flex; align-items: center; gap: 5px;
+      background: transparent; border: 1px dashed var(--border);
+      border-radius: 99px; padding: 4px 12px;
+      cursor: pointer; color: var(--muted); font-size: 11px; font-weight: 500;
+      transition: all 0.15s;
+    }
+    .user-btn-ghost:hover { border-color: var(--accent); color: var(--text); }
+
+    /* ── User modal ── */
+    #user-modal {
+      position: fixed; inset: 0; z-index: 8000;
+      background: rgba(0,0,0,0.72);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s;
+      backdrop-filter: blur(4px);
+    }
+    #user-modal.open { opacity: 1; pointer-events: all; }
+    .user-modal-box {
+      background: var(--surf); border: 1px solid var(--border);
+      border-radius: 16px; padding: 32px;
+      width: min(480px, 92vw);
+      box-shadow: 0 24px 64px rgba(0,0,0,0.65);
+      position: relative;
+    }
+    .user-modal-title { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+    .user-modal-sub   { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.5; }
+    .user-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .user-card {
+      background: var(--surf2); border: 2px solid var(--border);
+      border-radius: 12px; padding: 20px 10px 16px; text-align: center;
+      cursor: pointer; transition: all 0.18s;
+    }
+    .user-card:hover { border-color: var(--card-color); background: var(--surf3); transform: translateY(-2px); }
+    .user-card.selected {
+      border-color: var(--card-color);
+      background: color-mix(in srgb, var(--card-color) 12%, var(--surf2));
+    }
+    .user-avatar-lg {
+      width: 52px; height: 52px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 800; margin: 0 auto 10px; color: #fff;
+    }
+    .user-card-name { font-size: 14px; font-weight: 700; color: var(--text); }
+    .user-modal-close {
+      position: absolute; top: 14px; right: 16px;
+      background: none; border: none; color: var(--muted);
+      font-size: 18px; cursor: pointer; padding: 4px 7px; border-radius: 5px;
+    }
+    .user-modal-close:hover { background: var(--surf2); color: var(--text); }
+
+    /* ── Lightbox ── */
+    #lightbox {
+      position: fixed; inset: 0; z-index: 9000;
+      background: rgba(0,0,0,0.95);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    #lightbox.open { opacity: 1; pointer-events: all; }
+    #lb-img {
+      max-width: 90vw; max-height: 90vh;
+      object-fit: contain; border-radius: 6px;
+      user-select: none;
+    }
+    #lb-close {
+      position: absolute; top: 16px; right: 20px;
+      background: rgba(255,255,255,0.08); border: none; color: #fff;
+      font-size: 24px; cursor: pointer; width: 42px; height: 42px;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    #lb-close:hover { background: rgba(255,255,255,0.18); }
+    .lb-nav {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      background: rgba(255,255,255,0.08); border: none; color: #fff;
+      font-size: 32px; cursor: pointer; width: 52px; height: 80px;
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .lb-nav:hover { background: rgba(255,255,255,0.18); }
+    #lb-prev { left: 16px; }
+    #lb-next { right: 16px; }
+    #lb-counter {
+      position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+      color: rgba(255,255,255,0.6); font-size: 12px; font-weight: 500;
+      background: rgba(0,0,0,0.4); padding: 4px 12px; border-radius: 99px;
+    }
+
+    /* ── Leaflet dark overrides ── */
+    .leaflet-container { background: #1a1d27; }
+    .leaflet-bar a { background-color: #1a1d27 !important; color: #e2e8f0 !important; border-color: #2a2d3a !important; }
+    .leaflet-bar a:hover { background-color: #2a2d3a !important; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 20px; left: 50%;
+      transform: translateX(-50%) translateY(60px);
+      background: var(--surf); border: 1px solid var(--border);
+      border-radius: 8px; padding: 9px 16px;
+      font-size: 12.5px; font-weight: 500; z-index: 9999;
+      transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+      box-shadow: 0 6px 24px rgba(0,0,0,0.4); pointer-events: none;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── Responsive ── */
+    @media (max-width: 860px) {
+      #main { grid-template-columns: 1fr; }
+      #detail-left { border-right: none; border-bottom: 1px solid var(--border); }
+      #detail-right { overflow-y: visible; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Top nav ── -->
+<header id="topnav">
+  <a href="/" class="nav-back">← All Listings</a>
+  <div class="nav-divider"></div>
+  <div class="nav-title">
+    <div class="nav-addr">{{ apt.address }}</div>
+    <div class="nav-sub">
+      {% if apt.neighborhood %}<span>{{ apt.neighborhood }}</span> · {% endif %}
+      {% if apt.within_boundary %}
+        <span class="badge-in">● In your boundary</span>
+      {% else %}
+        <span class="badge-out">○ Outside boundary</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="nav-arrows">
+    {% if prev_id %}
+      <a href="/apartment/{{ prev_id }}" class="nav-arrow">‹ Prev</a>
+    {% endif %}
+    {% if next_id %}
+      <a href="/apartment/{{ next_id }}" class="nav-arrow">Next ›</a>
+    {% endif %}
+  </div>
+  <div id="user-indicator" style="flex-shrink:0;"></div>
+</header>
+
+<!-- ── Main ── -->
+<div id="main">
+
+  <!-- ── Left: Gallery + Map ── -->
+  <div id="detail-left">
+
+    <!-- Photo gallery -->
+    <div id="gallery">
+      <div id="gallery-stage" onclick="openLightbox(currentPhoto)">
+        {% if apt.images %}
+          <img id="main-photo" src="{{ apt.images[0] }}" alt="Apartment photo" />
+          <div class="gallery-overlay"><span class="expand-hint">Click to expand</span></div>
+          <button class="gallery-arrow prev" id="g-prev" onclick="event.stopPropagation(); prevPhoto()">‹</button>
+          <button class="gallery-arrow next" id="g-next" onclick="event.stopPropagation(); nextPhoto()">›</button>
+          <div class="gallery-counter" id="g-counter">1 / {{ apt.images | length }}</div>
+        {% else %}
+          <div class="no-photo-placeholder">
+            <span>🏠</span>
+            No photos available
+          </div>
+        {% endif %}
+      </div>
+
+      {% if apt.images and (apt.images | length > 1) %}
+      <div id="gallery-thumbs">
+        {% for img in apt.images %}
+          <img class="thumb-img{% if loop.index0 == 0 %} active{% endif %}"
+               src="{{ img }}" alt=""
+               onclick="showPhoto({{ loop.index0 }})">
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Mini map -->
+    {% if apt.latitude and apt.longitude %}
+    <div>
+      <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;">Location</div>
+      <div id="mini-map-wrap">
+        <div id="mini-map"></div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── Right: Info panel ── -->
+  <div id="detail-right">
+
+    <!-- Rent + address -->
+    <div class="rent-block">
+      <div>
+        <span class="rent-amount">${{ "{:,}".format(apt.rent or 0) }}</span>
+        <span class="rent-per">/mo</span>
+      </div>
+      <div class="rent-address">{{ apt.address }}</div>
+      {% if apt.neighborhood %}
+        <div class="rent-neigh">{{ apt.neighborhood }}{% if apt.zip_code %}, {{ apt.zip_code }}{% endif %}</div>
+      {% endif %}
+    </div>
+
+    <!-- Stat pills -->
+    <div class="stat-pills">
+      <div class="stat-pill">
+        <div class="val">{{ apt.bedrooms if apt.bedrooms is not none else "—" }}</div>
+        <div class="lbl">Beds</div>
+      </div>
+      <div class="stat-pill">
+        <div class="val">{{ apt.bathrooms if apt.bathrooms is not none else "—" }}</div>
+        <div class="lbl">Baths</div>
+      </div>
+      <div class="stat-pill">
+        <div class="val">{{ "{:,}".format(apt.sqft) if apt.sqft else "—" }}</div>
+        <div class="lbl">Sq Ft</div>
+      </div>
+    </div>
+
+    <!-- Availability row -->
+    <div class="info-row">
+      <span class="icon">📅</span>
+      <span><span class="label">Available</span> <strong>{{ apt.available_from or "—" }}</strong></span>
+      <span class="spacer"></span>
+      {% if apt.no_fee %}<span class="badge badge-green">No Fee</span>{% endif %}
+      {% if apt.pet_friendly %}<span class="badge badge-green" style="margin-left:4px;">Pets OK</span>{% endif %}
+    </div>
+
+    <!-- Boundary row -->
+    <div class="info-row">
+      <span class="icon">📍</span>
+      <span><span class="label">Boundary</span></span>
+      <span class="spacer"></span>
+      {% if apt.within_boundary %}
+        <span class="badge badge-accent">In your area</span>
+      {% else %}
+        <span class="badge badge-muted">Outside area</span>
+      {% endif %}
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Your vote -->
+    <div class="section">
+      <div class="section-title">Your Vote</div>
+      <div id="vote-no-user-hint" style="font-size:11px;color:var(--muted);font-style:italic;cursor:pointer;display:none;" onclick="openUserModal()">
+        👤 Select who you are to vote
+      </div>
+      <div class="vote-row">
+        <button class="vote-btn yes"   data-cat="yes"  >✓ Yes</button>
+        <button class="vote-btn maybe" data-cat="maybe">? Maybe</button>
+        <button class="vote-btn no"    data-cat="no"   >✗ No</button>
+      </div>
+    </div>
+
+    <!-- Group votes -->
+    <div class="section">
+      <div class="section-title">Group Votes</div>
+      <div class="roommates-row">
+        <div class="roommate-slot">
+          <div class="roommate-avatar" style="background:#6366f1;color:#fff;">A</div>
+          <div class="roommate-name">Andrew</div>
+          <div class="roommate-vote" id="rmvote-andrew">—</div>
+        </div>
+        <div class="roommate-slot">
+          <div class="roommate-avatar" style="background:#22d3ee;color:#fff;">L</div>
+          <div class="roommate-name">Liam</div>
+          <div class="roommate-vote" id="rmvote-liam">—</div>
+        </div>
+        <div class="roommate-slot">
+          <div class="roommate-avatar" style="background:#f59e0b;color:#fff;">J</div>
+          <div class="roommate-name">Joe</div>
+          <div class="roommate-vote" id="rmvote-joe">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Notes -->
+    <div class="section">
+      <div class="section-title">Group Notes</div>
+      <textarea id="notes-ta" placeholder="Add notes visible to everyone…"></textarea>
+      <div class="notes-footer">
+        <button id="notes-save-btn">Save Notes</button>
+        <span id="notes-feedback">Saved ✓</span>
+      </div>
+    </div>
+
+    <!-- Source link -->
+    {% if apt.source_url %}
+    <a href="{{ apt.source_url }}" target="_blank" rel="noopener" class="source-btn">
+      <span>View on Metro Realty</span>
+      <span style="font-size:10px;opacity:0.5;">↗</span>
+    </a>
+    {% endif %}
+
+  </div>
+</div>
+
+<!-- ── User identity modal ── -->
+<div id="user-modal">
+  <div class="user-modal-box">
+    <button class="user-modal-close" onclick="closeUserModal()">✕</button>
+    <div class="user-modal-title">Who are you?</div>
+    <div class="user-modal-sub">Pick your identity — your votes and notes will be saved under your name so you can compare with the group.</div>
+    <div class="user-cards">
+      <div class="user-card" id="ucard-andrew" style="--card-color:#6366f1" onclick="selectUser('andrew')">
+        <div class="user-avatar-lg" style="background:#6366f1">A</div>
+        <div class="user-card-name">Andrew</div>
+      </div>
+      <div class="user-card" id="ucard-liam" style="--card-color:#22d3ee" onclick="selectUser('liam')">
+        <div class="user-avatar-lg" style="background:#22d3ee">L</div>
+        <div class="user-card-name">Liam</div>
+      </div>
+      <div class="user-card" id="ucard-joe" style="--card-color:#f59e0b" onclick="selectUser('joe')">
+        <div class="user-avatar-lg" style="background:#f59e0b">J</div>
+        <div class="user-card-name">Joe</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Lightbox ── -->
+<div id="lightbox">
+  <button id="lb-close" onclick="closeLightbox()">✕</button>
+  <button class="lb-nav" id="lb-prev" onclick="lbNav(-1)">‹</button>
+  <img id="lb-img" src="" alt="" />
+  <button class="lb-nav" id="lb-next" onclick="lbNav(1)">›</button>
+  <div id="lb-counter"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Data from Flask ────────────────────────────────────────────────────────────
+const APT = {{ apt | tojson }};
+const BOUNDARY = {{ boundary | safe }};
+const PHOTOS = APT.images || [];
+
+// ── User identity ─────────────────────────────────────────────────────────────
+const USER_CONFIG = {
+  andrew: { name: "Andrew", initial: "A", color: "#6366f1" },
+  liam:   { name: "Liam",   initial: "L", color: "#22d3ee" },
+  joe:    { name: "Joe",    initial: "J", color: "#f59e0b" },
+};
+
+function getCurrentUser() {
+  return localStorage.getItem("apartment_user") || null;
+}
+
+function openUserModal() {
+  const user = getCurrentUser();
+  Object.keys(USER_CONFIG).forEach(u => {
+    const card = document.getElementById(`ucard-${u}`);
+    if (card) card.classList.toggle("selected", u === user);
+  });
+  document.getElementById("user-modal").classList.add("open");
+}
+
+function closeUserModal() {
+  document.getElementById("user-modal").classList.remove("open");
+}
+
+function selectUser(user) {
+  localStorage.setItem("apartment_user", user);
+  closeUserModal();
+  updateUserIndicator();
+  updateVoteButtons(currentCategory);
+  refreshRoommateVotes();
+}
+
+function updateUserIndicator() {
+  const user = getCurrentUser();
+  const el = document.getElementById("user-indicator");
+  if (user && USER_CONFIG[user]) {
+    const u = USER_CONFIG[user];
+    el.innerHTML = `<button class="user-btn" onclick="openUserModal()">
+      <div class="user-avatar-sm" style="background:${u.color}">${u.initial}</div>
+      <span class="user-name-sm">${u.name}</span>
+    </button>`;
+  } else {
+    el.innerHTML = `<button class="user-btn-ghost" onclick="openUserModal()">👤 Who are you?</button>`;
+  }
+}
+
+document.getElementById("user-modal").addEventListener("click", function(e) {
+  if (e.target === this) closeUserModal();
+});
+
+// ── Gallery ───────────────────────────────────────────────────────────────────
+let currentPhoto = 0;
+
+function showPhoto(idx) {
+  if (!PHOTOS.length) return;
+  currentPhoto = Math.max(0, Math.min(idx, PHOTOS.length - 1));
+  const img = document.getElementById("main-photo");
+  if (img) {
+    img.style.opacity = "0";
+    setTimeout(() => {
+      img.src = PHOTOS[currentPhoto];
+      img.style.opacity = "1";
+    }, 80);
+  }
+
+  // Thumbnails
+  document.querySelectorAll(".thumb-img").forEach((t, i) =>
+    t.classList.toggle("active", i === currentPhoto));
+
+  // Scroll active thumb into view
+  const active = document.querySelector(".thumb-img.active");
+  if (active) active.scrollIntoView({ inline: "nearest", behavior: "smooth" });
+
+  // Counter
+  const counter = document.getElementById("g-counter");
+  if (counter) counter.textContent = `${currentPhoto + 1} / ${PHOTOS.length}`;
+
+  // Arrows
+  const prev = document.getElementById("g-prev");
+  const next = document.getElementById("g-next");
+  if (prev) prev.classList.toggle("hidden", currentPhoto === 0);
+  if (next) next.classList.toggle("hidden", currentPhoto === PHOTOS.length - 1);
+}
+
+function prevPhoto() { showPhoto(currentPhoto - 1); }
+function nextPhoto() { showPhoto(currentPhoto + 1); }
+
+// Init arrows
+showPhoto(0);
+
+// ── Lightbox ──────────────────────────────────────────────────────────────────
+let lbOpen = false;
+
+function openLightbox(idx) {
+  if (!PHOTOS.length) return;
+  lbOpen = true;
+  document.getElementById("lightbox").classList.add("open");
+  setLbPhoto(idx);
+}
+
+function closeLightbox() {
+  lbOpen = false;
+  document.getElementById("lightbox").classList.remove("open");
+}
+
+function setLbPhoto(idx) {
+  currentPhoto = Math.max(0, Math.min(idx, PHOTOS.length - 1));
+  document.getElementById("lb-img").src = PHOTOS[currentPhoto];
+  document.getElementById("lb-counter").textContent = `${currentPhoto + 1} / ${PHOTOS.length}`;
+  document.getElementById("lb-prev").style.display = currentPhoto === 0 ? "none" : "";
+  document.getElementById("lb-next").style.display = currentPhoto === PHOTOS.length - 1 ? "none" : "";
+}
+
+function lbNav(dir) { setLbPhoto(currentPhoto + dir); }
+
+// Click backdrop to close
+document.getElementById("lightbox").addEventListener("click", function(e) {
+  if (e.target === this) closeLightbox();
+});
+
+// Keyboard navigation
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && lbOpen) { closeLightbox(); return; }
+  if (e.key === "ArrowLeft")  { if (lbOpen) lbNav(-1); else prevPhoto(); }
+  if (e.key === "ArrowRight") { if (lbOpen) lbNav(1);  else nextPhoto(); }
+});
+
+// ── Mini map ──────────────────────────────────────────────────────────────────
+if (APT.latitude && APT.longitude) {
+  const miniMap = L.map("mini-map", {
+    zoomControl: false,
+    scrollWheelZoom: false,
+    dragging: true,
+    doubleClickZoom: false,
+  }).setView([APT.latitude, APT.longitude], 15);
+
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; OSM &copy; CARTO', subdomains: "abcd", maxZoom: 19,
+  }).addTo(miniMap);
+
+  // Boundary polygon
+  if (BOUNDARY && BOUNDARY.latlngs) {
+    L.polygon(BOUNDARY.latlngs, {
+      color: "#6366f1", fillColor: "#6366f1", fillOpacity: 0.07,
+      weight: 2, dashArray: "6 4",
+    }).addTo(miniMap);
+  }
+
+  // Apartment marker
+  const color = { yes: "#22c55e", maybe: "#f59e0b", no: "#ef4444", unsorted: "#6366f1" }[APT.list_category] || "#6366f1";
+  L.divIcon({
+    className: "",
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2.5px solid rgba(255,255,255,0.9);box-shadow:0 1px 6px rgba(0,0,0,0.55);"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
+  L.marker([APT.latitude, APT.longitude], {
+    icon: L.divIcon({
+      className: "",
+      html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2.5px solid rgba(255,255,255,0.9);box-shadow:0 1px 8px rgba(0,0,0,0.6);"></div>`,
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+    }),
+  }).addTo(miniMap).bindPopup(`<strong>${APT.address}</strong>`);
+}
+
+// ── Voting ────────────────────────────────────────────────────────────────────
+const VOTE_LABELS = { yes: "✓ Yes", maybe: "? Maybe", no: "✗ No", unsorted: "—" };
+const VOTE_COLORS = { yes: "var(--green)", maybe: "var(--amber)", no: "var(--red)", unsorted: "var(--muted)" };
+
+// APT.user_ratings is populated by the server; keep a mutable local copy
+const localRatings = { ...(APT.user_ratings || {}) };
+
+function getUserCat() {
+  const user = getCurrentUser();
+  return (user && localRatings[user]?.list_category) || "unsorted";
+}
+
+let currentCategory = getUserCat();
+
+function updateVoteButtons() {
+  const user = getCurrentUser();
+  currentCategory = getUserCat();
+
+  document.querySelectorAll(".vote-btn").forEach(btn => {
+    const c = btn.dataset.cat;
+    btn.className = `vote-btn ${c}`;
+    if (c === currentCategory) btn.classList.add(`on-${c}`);
+    btn.disabled = !user;
+    btn.style.opacity = user ? "" : "0.4";
+    btn.style.cursor  = user ? "" : "not-allowed";
+  });
+
+  // Notes
+  const ta = document.getElementById("notes-ta");
+  const saveBtn = document.getElementById("notes-save-btn");
+  const userNotes = (user && localRatings[user]?.notes) || "";
+  ta.value = userNotes;
+  ta.disabled = !user;
+  ta.style.opacity = user ? "" : "0.4";
+  saveBtn.disabled = !user;
+  saveBtn.style.opacity = user ? "" : "0.4";
+
+  // No-user hint
+  const hint = document.getElementById("vote-no-user-hint");
+  if (hint) hint.style.display = user ? "none" : "";
+
+  refreshRoommateVotes();
+}
+
+function refreshRoommateVotes() {
+  Object.keys(USER_CONFIG).forEach(u => {
+    const el = document.getElementById(`rmvote-${u}`);
+    if (!el) return;
+    const cat = localRatings[u]?.list_category || "unsorted";
+    el.textContent = VOTE_LABELS[cat] || "—";
+    el.style.color  = VOTE_COLORS[cat] || "var(--muted)";
+    el.style.fontStyle = cat === "unsorted" ? "italic" : "normal";
+  });
+}
+
+updateVoteButtons();
+
+document.querySelectorAll(".vote-btn").forEach(btn => {
+  btn.addEventListener("click", async function() {
+    const user = getCurrentUser();
+    if (!user) { openUserModal(); return; }
+    const cat = this.dataset.cat;
+    await fetch(`/api/apartments/${APT.id}/rank`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user, list_category: cat }),
+    });
+    if (!localRatings[user]) localRatings[user] = {};
+    localRatings[user].list_category = cat;
+    updateVoteButtons();
+    toast(`Marked as "${cat}"`);
+  });
+});
+
+// ── Notes ─────────────────────────────────────────────────────────────────────
+document.getElementById("notes-save-btn").addEventListener("click", async () => {
+  const user = getCurrentUser();
+  if (!user) { openUserModal(); return; }
+  const notes = document.getElementById("notes-ta").value;
+  await fetch(`/api/apartments/${APT.id}/rank`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user, notes }),
+  });
+  if (!localRatings[user]) localRatings[user] = {};
+  localRatings[user].notes = notes;
+  const fb = document.getElementById("notes-feedback");
+  fb.classList.add("show");
+  setTimeout(() => fb.classList.remove("show"), 2000);
+});
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+updateUserIndicator();
+if (!getCurrentUser()) {
+  setTimeout(() => openUserModal(), 600);
+}
+</script>
+</body>
+</html>
