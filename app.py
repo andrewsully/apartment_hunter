@@ -241,4 +241,5 @@ if __name__ == "__main__":
         os.makedirs("data", exist_ok=True)
         db.create_all()
         migrate_legacy_votes()
-    app.run(debug=True, port=5001)
+    port = int(os.getenv("PORT", "5001"))
+    app.run(debug=True, port=port)

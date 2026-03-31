@@ -108,6 +108,13 @@
     .pdrop-price-option.active { color: var(--text); }
     .pdrop-radio { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; border: 2px solid var(--border); transition: all 0.12s; }
     .pdrop-price-option.active .pdrop-radio { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 3px var(--surf); }
+    .pdrop-toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; padding: 4px 2px 2px;
+    }
+    .pdrop-toggle-copy { display: flex; flex-direction: column; gap: 2px; }
+    .pdrop-toggle-title { font-size: 13px; font-weight: 600; color: var(--text); }
+    .pdrop-toggle-sub { font-size: 11px; color: var(--muted); }
     .pdrop-nav-link {
       display: flex; align-items: center; gap: 9px; padding: 9px 16px;
       color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 500; transition: all 0.12s;
@@ -594,6 +601,18 @@
         <button class="pdrop-price-option" id="pd-opt-pp"    onclick="setPriceMode('per_person', event)"><span class="pdrop-radio"></span>Per person (÷3)</button>
         <button class="pdrop-price-option" id="pd-opt-total" onclick="setPriceMode('total', event)"><span class="pdrop-radio"></span>Total price</button>
       </div>
+      <div class="pdrop-section">
+        <div class="pdrop-label">Map Overlays</div>
+        <div class="pdrop-toggle-row">
+          <div class="pdrop-toggle-copy">
+            <div class="pdrop-toggle-title">MBTA lines + stops</div>
+            <div class="pdrop-toggle-sub">Show rapid transit on map</div>
+          </div>
+          <button class="toggle-pill" id="mbta-overlay-pill" onclick="toggleMbtaOverlay(event)" aria-label="Toggle MBTA overlay">
+            <div class="toggle-knob"></div>
+          </button>
+        </div>
+      </div>
       <div class="pdrop-links">
         <a href="/" class="pdrop-nav-link"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" x2="5" y1="12" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>All Listings</a>
         <a href="/compare" class="pdrop-nav-link"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Group Compare</a>
@@ -1013,8 +1032,98 @@ document.addEventListener("keydown", e => {
 });
 
 // ── Mini map ──────────────────────────────────────────────────────────────────
+const MBTA_COLORS = {
+  BLUE: "#3b82f6",
+  GREEN: "#22c55e",
+  ORANGE: "#f97316",
+  RED: "#ef4444",
+  SILVER: "#94a3b8",
+};
+let miniMap = null;
+let mbtaOverlayLoaded = false;
+let mbtaLinesLayer = null;
+let mbtaStopsLayer = null;
+let mbtaOverlayEnabled = localStorage.getItem("apartment_mbta_overlay") === "1";
+
+function updateMbtaOverlayToggle() {
+  const pill = document.getElementById("mbta-overlay-pill");
+  if (pill) pill.classList.toggle("on", mbtaOverlayEnabled);
+}
+
+async function ensureMbtaOverlayLoaded() {
+  if (!miniMap || mbtaOverlayLoaded) return;
+  const [linesResp, stopsResp] = await Promise.all([
+    fetch("/static/data/mbta_arc.geojson"),
+    fetch("/static/data/mbta_node.geojson"),
+  ]);
+  if (!linesResp.ok || !stopsResp.ok) throw new Error("Could not load MBTA overlay data");
+  const [linesGeojson, stopsGeojson] = await Promise.all([linesResp.json(), stopsResp.json()]);
+
+  mbtaLinesLayer = L.geoJSON(linesGeojson, {
+    pane: "mbtaLinesPane",
+    style: (feature) => {
+      const line = feature?.properties?.LINE;
+      return {
+        color: MBTA_COLORS[line] || "#a1a1aa",
+        weight: 3,
+        opacity: 0.9,
+      };
+    },
+  });
+  mbtaStopsLayer = L.geoJSON(stopsGeojson, {
+    pane: "mbtaStopsPane",
+    pointToLayer: (feature, latlng) => {
+      const line = feature?.properties?.LINE;
+      return L.circleMarker(latlng, {
+        radius: 3.5,
+        color: "#f8fafc",
+        weight: 1,
+        fillColor: MBTA_COLORS[line] || "#a1a1aa",
+        fillOpacity: 0.95,
+      });
+    },
+  });
+  mbtaOverlayLoaded = true;
+}
+
+function setMbtaOverlayEnabled(enabled) {
+  mbtaOverlayEnabled = !!enabled;
+  localStorage.setItem("apartment_mbta_overlay", mbtaOverlayEnabled ? "1" : "0");
+  updateMbtaOverlayToggle();
+  if (!miniMap || !mbtaOverlayLoaded) return;
+  if (mbtaOverlayEnabled) {
+    if (mbtaLinesLayer && !miniMap.hasLayer(mbtaLinesLayer)) miniMap.addLayer(mbtaLinesLayer);
+    if (mbtaStopsLayer && !miniMap.hasLayer(mbtaStopsLayer)) miniMap.addLayer(mbtaStopsLayer);
+  } else {
+    if (mbtaLinesLayer && miniMap.hasLayer(mbtaLinesLayer)) miniMap.removeLayer(mbtaLinesLayer);
+    if (mbtaStopsLayer && miniMap.hasLayer(mbtaStopsLayer)) miniMap.removeLayer(mbtaStopsLayer);
+  }
+}
+
+async function syncMbtaOverlay() {
+  if (!miniMap) return;
+  if (!mbtaOverlayEnabled) {
+    setMbtaOverlayEnabled(false);
+    return;
+  }
+  try {
+    await ensureMbtaOverlayLoaded();
+    setMbtaOverlayEnabled(true);
+  } catch (err) {
+    console.warn(err);
+    setMbtaOverlayEnabled(false);
+    toast("Could not load MBTA overlay");
+  }
+}
+
+function toggleMbtaOverlay(e) {
+  if (e) e.stopPropagation();
+  mbtaOverlayEnabled = !mbtaOverlayEnabled;
+  syncMbtaOverlay();
+}
+
 if (APT.latitude && APT.longitude) {
-  const miniMap = L.map("mini-map", {
+  miniMap = L.map("mini-map", {
     zoomControl: false,
     scrollWheelZoom: false,
     dragging: true,
@@ -1024,6 +1133,11 @@ if (APT.latitude && APT.longitude) {
   L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
     attribution: '&copy; OSM &copy; CARTO', subdomains: "abcd", maxZoom: 19,
   }).addTo(miniMap);
+
+  miniMap.createPane("mbtaLinesPane");
+  miniMap.getPane("mbtaLinesPane").style.zIndex = "430";
+  miniMap.createPane("mbtaStopsPane");
+  miniMap.getPane("mbtaStopsPane").style.zIndex = "460";
 
   // Boundary polygon
   if (BOUNDARY && BOUNDARY.latlngs) {
@@ -1049,6 +1163,7 @@ if (APT.latitude && APT.longitude) {
       iconAnchor: [7, 7],
     }),
   }).addTo(miniMap).bindPopup(`<strong>${APT.address}</strong>`);
+  syncMbtaOverlay();
 }
 
 // ── Voting ────────────────────────────────────────────────────────────────────
@@ -1215,6 +1330,7 @@ function togglePriceMode() { setPriceMode(priceMode === "total" ? "per_person" :
 // ── Boot ──────────────────────────────────────────────────────────────────────
 updateUserIndicator(); // builds dropdown too
 applyPriceMode();      // sets rent display + dropdown radio
+updateMbtaOverlayToggle();
 if (!getCurrentUser()) {
   setTimeout(() => openUserModal(), 600);
 }

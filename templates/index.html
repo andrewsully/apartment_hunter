@@ -7,6 +7,7 @@
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
@@ -17,6 +18,7 @@
       --bg:      #0f1117;
       --surf:    #1a1d27;
       --surf2:   #22263a;
+      --surf3:   #2a2f45;
       --border:  #2a2d3a;
       --accent:  #6366f1;
       --cyan:    #22d3ee;
@@ -37,7 +39,10 @@
       background: var(--surf);
       border-bottom: 1px solid var(--border);
       display: flex; align-items: center;
-      padding: 0 16px; gap: 12px; z-index: 100;
+      padding: 0 16px; gap: 12px;
+      position: relative;
+      z-index: 3000;
+      overflow: visible;
       flex-shrink: 0;
     }
     .logo { font-size: 14px; font-weight: 700; white-space: nowrap; }
@@ -45,6 +50,7 @@
     .stat { font-size: 12px; color: var(--muted); white-space: nowrap; }
     .stat strong { color: var(--text); font-weight: 600; }
     .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    #user-indicator { display: flex; align-items: center; cursor: pointer; position: relative; z-index: 650; }
 
     .chip {
       padding: 4px 11px; border-radius: 99px; font-size: 12px; font-weight: 500;
@@ -223,20 +229,23 @@
       flex-shrink: 0;
     }
     .drawer-head-info { flex: 1; min-width: 0; }
-    .drawer-addr { font-size: 13.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .drawer-addr {
+      font-size: 13.5px; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      display: flex; align-items: center; gap: 4px;
+    }
     .drawer-sub  { font-size: 11px; color: var(--muted); margin-top: 2px; }
     .drawer-close {
       background: none; border: none; color: var(--muted); cursor: pointer;
       padding: 5px 7px; border-radius: 5px; font-size: 16px; line-height: 1; flex-shrink: 0;
     }
     .drawer-close:hover { background: var(--surf2); color: var(--text); }
-    .drawer-expand {
-      display: inline-flex; align-items: center; gap: 4px;
-      text-decoration: none; font-size: 11px; font-weight: 600; color: var(--muted);
-      padding: 4px 9px; border-radius: 6px; border: 1px solid var(--border);
-      background: transparent; transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
+    .d-nickname-btn {
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; padding: 1px 3px; border-radius: 4px;
+      font-size: 13px; line-height: 1; transition: color 0.15s; flex-shrink: 0;
     }
-    .drawer-expand:hover { background: var(--surf2); color: var(--accent); border-color: var(--accent); }
+    .d-nickname-btn:hover { color: var(--text); }
 
     /* Drawer image gallery */
     #d-gallery {
@@ -266,91 +275,152 @@
       position: absolute; bottom: 10px; right: 12px;
       background: rgba(0,0,0,0.65); color: #fff;
       font-size: 10.5px; font-weight: 600; padding: 2px 8px;
-      border-radius: 99px; pointer-events: none;
+      border-radius: 99px; pointer-events: none; z-index: 2;
     }
-
-    .drawer-body { flex: 1; overflow-y: auto; padding: 14px 18px 28px; scrollbar-width: thin; }
-
-    /* Stat grid */
-    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 14px; }
-    .stat-cell {
-      background: var(--surf2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 9px 6px; text-align: center;
+    .d-expand-btn {
+      position: absolute; bottom: 10px; left: 10px; z-index: 3;
+      background: rgba(0,0,0,0.65); color: #fff; border: none;
+      font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 6px;
+      cursor: pointer; transition: background 0.15s;
+      display: flex; align-items: center; gap: 4px;
     }
-    .stat-val { font-size: 17px; font-weight: 700; }
-    .stat-key { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+    .d-expand-btn:hover { background: rgba(0,0,0,0.9); }
 
-    /* Availability row */
-    .avail-row {
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-      font-size: 12px; color: var(--muted);
-      background: var(--surf2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 8px 12px; margin-bottom: 14px;
-    }
-    .avail-row strong { color: var(--text); }
-    .avail-badge {
-      font-size: 10.5px; font-weight: 700; padding: 2px 7px;
-      border-radius: 99px; margin-left: auto;
-    }
-    .avail-badge.green { color: var(--green); background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); }
-
-    /* Category buttons */
-    .cat-row { display: flex; gap: 7px; margin-bottom: 16px; }
-    .cat-btn {
-      flex: 1; padding: 9px 6px; border-radius: 8px;
-      font-size: 12px; font-weight: 600; cursor: pointer;
-      border: 1px solid var(--border); background: transparent; color: var(--muted);
-      transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 5px;
-    }
-    .cat-btn:hover { border-color: currentColor; }
-    .cat-btn.yes   { color: var(--green); }
-    .cat-btn.maybe { color: var(--amber); }
-    .cat-btn.no    { color: var(--red); }
-    .cat-btn.on-yes   { background: rgba(34,197,94,0.12);  border-color: var(--green);  color: var(--green); }
-    .cat-btn.on-maybe { background: rgba(245,158,11,0.12); border-color: var(--amber);  color: var(--amber); }
-    .cat-btn.on-no    { background: rgba(239,68,68,0.08);  border-color: var(--red);    color: var(--red); }
-
-    /* Notes / group thread */
-    .section-label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 10px; }
-    .notes-thread { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
-    .note-bubble { display: flex; gap: 7px; align-items: flex-start; }
-    .note-bubble.own { flex-direction: row-reverse; }
-    .note-avatar {
-      width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+    /* Drawer lightbox */
+    #d-lightbox {
+      position: fixed; inset: 0; z-index: 9000;
+      background: rgba(0,0,0,0.95);
       display: flex; align-items: center; justify-content: center;
-      font-size: 9px; font-weight: 800; color: #fff; margin-top: 2px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s ease;
     }
-    .note-content { max-width: 84%; display: flex; flex-direction: column; gap: 2px; }
-    .note-bubble.own .note-content { align-items: flex-end; }
-    .note-who { font-size: 10px; font-weight: 600; color: var(--muted); padding: 0 3px; }
-    .note-text {
-      background: var(--surf2); border: 1px solid var(--border);
-      border-radius: 2px 12px 12px 12px;
-      padding: 8px 11px; font-size: 12px; line-height: 1.5;
-      color: var(--text); word-break: break-word;
+    #d-lightbox.open { opacity: 1; pointer-events: all; }
+    #d-lb-img {
+      max-width: 90vw; max-height: 90vh;
+      object-fit: contain; border-radius: 6px;
+      user-select: none; display: block;
     }
-    .note-bubble.own .note-text {
-      background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.25);
-      border-radius: 12px 2px 12px 12px;
-    }
-    .note-empty { font-size: 11px; color: var(--muted); font-style: italic; padding: 2px 3px; }
-    .notes-divider { height: 1px; background: var(--border); margin: 10px 0; }
-    .notes-own-label { font-size: 10px; color: var(--muted); margin-bottom: 5px; }
-    #notes-ta {
-      width: 100%; background: var(--bg); border: 1px solid var(--border);
-      color: var(--text); border-radius: 8px; padding: 9px 11px;
-      font-size: 12.5px; font-family: inherit; resize: vertical; min-height: 60px;
-    }
-    #notes-ta:focus { outline: none; border-color: var(--accent); }
-    .notes-footer { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
-    #notes-save-btn {
-      padding: 6px 14px; border-radius: 7px; font-size: 12px; font-weight: 600;
-      cursor: pointer; border: none; background: var(--accent); color: #fff;
+    #d-lb-close {
+      position: absolute; top: 16px; right: 20px;
+      background: rgba(255,255,255,0.08); border: none; color: #fff;
+      font-size: 22px; cursor: pointer; width: 42px; height: 42px;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
       transition: background 0.15s;
     }
-    #notes-save-btn:hover { background: #4f52e8; }
-    #notes-feedback { font-size: 11px; color: var(--green); opacity: 0; transition: opacity 0.3s; }
-    #notes-feedback.show { opacity: 1; }
+    #d-lb-close:hover { background: rgba(255,255,255,0.18); }
+    .d-lb-nav {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      background: rgba(255,255,255,0.08); border: none; color: #fff;
+      font-size: 32px; cursor: pointer; width: 52px; height: 80px;
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .d-lb-nav:hover { background: rgba(255,255,255,0.18); }
+    #d-lb-prev { left: 16px; }
+    #d-lb-next { right: 16px; }
+    #d-lb-counter {
+      position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+      color: rgba(255,255,255,0.6); font-size: 12px; font-weight: 500;
+      background: rgba(0,0,0,0.4); padding: 4px 12px; border-radius: 99px;
+      pointer-events: none;
+    }
+
+    .drawer-body { flex: 1; overflow-y: auto; padding: 16px 18px 28px; scrollbar-width: thin; }
+
+    /* Rent block */
+    .d-rent-block { margin-bottom: 16px; }
+    .d-rent-amount { font-size: 28px; font-weight: 800; color: var(--cyan); line-height: 1; letter-spacing: -0.5px; }
+    .d-rent-per { font-size: 13px; font-weight: 400; color: var(--muted); }
+    .d-rent-address { font-size: 13px; font-weight: 600; color: var(--text); margin-top: 5px; }
+    .d-rent-neigh { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* Stat pills */
+    .d-stat-pills { display: flex; gap: 7px; margin-bottom: 12px; }
+    .d-stat-pill {
+      flex: 1; background: var(--surf2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 9px 8px; text-align: center;
+    }
+    .d-stat-pill .d-val { font-size: 18px; font-weight: 700; }
+    .d-stat-pill .d-lbl { font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+    /* Info row */
+    .d-info-row {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      background: var(--surf2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 12px; margin-bottom: 14px;
+      font-size: 12px; color: var(--muted);
+    }
+    .d-info-row strong { color: var(--text); }
+    .d-info-spacer { flex: 1; min-width: 8px; }
+    .d-badge { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 99px; }
+    .d-badge-green { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: var(--green); }
+
+    /* Section */
+    .d-section { margin-bottom: 16px; }
+    .d-section-title { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 8px; }
+    .d-divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+    /* Vote buttons */
+    .vote-row { display: flex; gap: 7px; }
+    .vote-btn {
+      flex: 1; padding: 9px 6px; border-radius: 9px;
+      font-size: 12.5px; font-weight: 700;
+      cursor: pointer; border: 1.5px solid var(--border);
+      background: transparent; color: var(--muted);
+      transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      font-family: inherit;
+    }
+    .vote-btn:hover { border-color: currentColor; }
+    .vote-btn.yes   { color: var(--green); }
+    .vote-btn.maybe { color: var(--amber); }
+    .vote-btn.no    { color: var(--red); }
+    .vote-btn.on-yes   { background: rgba(34,197,94,0.12);  border-color: var(--green);  color: var(--green); }
+    .vote-btn.on-maybe { background: rgba(245,158,11,0.12); border-color: var(--amber);  color: var(--amber); }
+    .vote-btn.on-no    { background: rgba(239,68,68,0.08);  border-color: var(--red);    color: var(--red); }
+
+    /* Group votes */
+    .roommates-row { display: flex; gap: 7px; }
+    .roommate-slot {
+      flex: 1; padding: 9px 6px;
+      background: var(--surf2); border: 1px solid var(--border);
+      border-radius: 9px; text-align: center;
+    }
+    .roommate-avatar {
+      width: 26px; height: 26px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 800; margin: 0 auto 4px; color: #fff;
+    }
+    .roommate-name { font-size: 10px; font-weight: 600; color: var(--muted); }
+    .roommate-vote {
+      font-size: 10px; color: var(--muted); margin-top: 2px;
+      display: flex; align-items: center; justify-content: center; gap: 3px; min-height: 14px;
+    }
+    .roommate-note {
+      font-size: 9px; color: var(--muted); margin-top: 5px;
+      line-height: 1.35; word-break: break-word; text-align: center;
+      font-style: italic; opacity: 0.85;
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    /* Chat input row */
+    .d-chat-row { display: flex; gap: 6px; align-items: center; }
+    #d-chat-input {
+      flex: 1; background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); border-radius: 8px; padding: 8px 11px;
+      font-size: 12.5px; font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    #d-chat-input:focus { outline: none; border-color: var(--accent); }
+    #d-chat-input:disabled { opacity: 0.4; }
+    #d-chat-send {
+      padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      cursor: pointer; border: none; background: var(--accent); color: #fff;
+      transition: background 0.15s; white-space: nowrap; font-family: inherit; flex-shrink: 0;
+    }
+    #d-chat-send:hover { background: #4f52e8; }
+    #d-chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
 
     /* Source link */
     .source-link {
@@ -361,6 +431,161 @@
       border-radius: 8px; transition: all 0.15s;
     }
     .source-link:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* ── Settings button ── */
+    .settings-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border-radius: 99px;
+      background: var(--surf2); border: 1px solid var(--border);
+      color: var(--muted); cursor: pointer;
+      transition: all 0.15s; flex-shrink: 0;
+    }
+    .settings-btn:hover { border-color: var(--accent); color: var(--text); }
+    .settings-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(99,102,241,0.1); }
+
+    /* ── Settings dropdown ── */
+    #settings-drop {
+      display: none; position: absolute; right: 0; top: calc(100% + 10px);
+      background: var(--surf); border: 1px solid var(--border);
+      border-radius: 14px; min-width: 220px; z-index: 3500;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.55); overflow: hidden;
+      animation: dropIn 0.12s ease-out;
+    }
+    #settings-drop.open { display: block; }
+
+    /* ── Alerts button + dropdown ── */
+    .alerts-btn {
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border-radius: 99px;
+      background: var(--surf2); border: 1px solid var(--border);
+      color: var(--muted); cursor: pointer;
+      transition: all 0.15s; flex-shrink: 0;
+    }
+    .alerts-btn:hover { border-color: var(--accent); color: var(--text); }
+    .alerts-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(99,102,241,0.1); }
+    .alerts-badge {
+      position: absolute; top: -4px; right: -4px;
+      background: #ef4444; color: #fff;
+      font-size: 9px; font-weight: 800;
+      min-width: 16px; height: 16px; border-radius: 99px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 3px; line-height: 1;
+      border: 1.5px solid var(--bg);
+      pointer-events: none;
+    }
+    #alerts-drop {
+      display: none; position: absolute; right: 0; top: calc(100% + 10px);
+      background: var(--surf); border: 1px solid var(--border);
+      border-radius: 14px; min-width: 290px; max-width: 320px; z-index: 3500;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.55); overflow: hidden;
+      animation: dropIn 0.12s ease-out;
+    }
+    #alerts-drop.open { display: block; }
+    #alerts-list { max-height: 360px; overflow-y: auto; scrollbar-width: thin; }
+    .alert-item {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background 0.12s;
+    }
+    .alert-item:last-child { border-bottom: none; }
+    .alert-item:hover { background: var(--surf2); }
+    .alert-item.unread { background: rgba(99,102,241,0.05); }
+    .alert-avatar {
+      width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 800; color: #fff; margin-top: 1px;
+    }
+    .alert-body { flex: 1; min-width: 0; }
+    .alert-text { font-size: 12px; color: var(--text); line-height: 1.4; }
+    .alert-apt { font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .alert-unread-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 7px; }
+    .alert-empty { padding: 24px 14px; text-align: center; font-size: 12px; color: var(--muted); font-style: italic; }
+
+    /* ── Nickname inline editor ── */
+    .d-nickname-edit {
+      display: none; align-items: center; gap: 5px;
+      padding: 0 2px; width: 100%;
+    }
+    .d-nickname-edit.visible { display: flex; }
+    #d-nickname-input {
+      flex: 1; background: var(--surf2); border: 1px solid var(--accent);
+      color: var(--text); border-radius: 7px; padding: 5px 10px;
+      font-size: 14px; font-family: inherit; font-weight: 600;
+      outline: none; min-width: 0;
+    }
+    #d-nickname-input:focus { box-shadow: 0 0 0 2px rgba(99,102,241,0.22); }
+    #d-nickname-input::placeholder { color: var(--muted); font-weight: 400; font-style: italic; }
+    .d-nickname-confirm, .d-nickname-cancel-btn {
+      background: none; border: none; cursor: pointer;
+      width: 26px; height: 26px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; line-height: 1; flex-shrink: 0; transition: background 0.12s;
+    }
+    .d-nickname-confirm { color: var(--green); }
+    .d-nickname-confirm:hover { background: rgba(34,197,94,0.12); }
+    .d-nickname-cancel-btn { color: var(--muted); }
+    .d-nickname-cancel-btn:hover { background: var(--surf2); }
+
+    /* ── Cluster selection modal ── */
+    #cluster-modal {
+      position: fixed; inset: 0; z-index: 7000;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px; pointer-events: none;
+    }
+    #cluster-modal.open { pointer-events: all; }
+    .cluster-box {
+      background: var(--surf); border: 1px solid var(--border);
+      border-radius: 14px; min-width: 260px; max-width: 340px; width: 100%;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+      max-height: 60vh; display: flex; flex-direction: column;
+      transform: scale(0.9) translateY(12px); opacity: 0;
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: none;
+    }
+    #cluster-modal.open .cluster-box { transform: scale(1) translateY(0); opacity: 1; pointer-events: all; }
+    .cluster-box-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 11px 14px 9px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .cluster-box-title { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; }
+    .cluster-box-close {
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; padding: 2px 5px; border-radius: 4px; font-size: 14px; line-height: 1;
+    }
+    .cluster-box-close:hover { background: var(--surf2); color: var(--text); }
+    #cluster-list { overflow-y: auto; scrollbar-width: thin; }
+    .cluster-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; cursor: pointer; transition: background 0.12s;
+      border-bottom: 1px solid var(--border);
+    }
+    .cluster-item:last-child { border-bottom: none; }
+    .cluster-item:hover { background: var(--surf2); }
+    .cluster-thumb {
+      width: 52px; height: 40px; min-width: 52px;
+      border-radius: 6px; object-fit: cover;
+    }
+    .cluster-thumb-ph {
+      width: 52px; height: 40px; min-width: 52px;
+      border-radius: 6px; background: var(--surf2);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--border); font-size: 18px;
+    }
+    .cluster-info { flex: 1; min-width: 0; }
+    .cluster-title { font-size: 12.5px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cluster-addr { font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+    .cluster-meta { font-size: 11px; color: var(--cyan); font-weight: 600; margin-top: 2px; }
+    .cluster-cat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    /* Backdrop click-away for cluster modal */
+    #cluster-modal-backdrop {
+      position: fixed; inset: 0; z-index: 6999;
+      display: none;
+    }
+    #cluster-modal-backdrop.open { display: block; }
+
+    /* ── Suppress Leaflet.markercluster default styles ── */
+    .leaflet-cluster-anim .leaflet-marker-icon, .leaflet-cluster-anim .leaflet-marker-shadow { transition: none !important; }
 
     /* ── Leaflet overrides ── */
     .leaflet-container { background: #1a1d27; }
@@ -516,7 +741,7 @@
     #profile-drop {
       display: none; position: absolute; right: 0; top: calc(100% + 10px);
       background: var(--surf); border: 1px solid var(--border);
-      border-radius: 14px; min-width: 236px; z-index: 600;
+      border-radius: 14px; min-width: 236px; z-index: 3500;
       box-shadow: 0 12px 40px rgba(0,0,0,0.55); overflow: hidden;
       animation: dropIn 0.12s ease-out;
     }
@@ -552,6 +777,13 @@
       border: 2px solid var(--border); transition: all 0.12s;
     }
     .pdrop-price-option.active .pdrop-radio { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 3px var(--surf); }
+    .pdrop-toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; padding: 4px 2px 2px;
+    }
+    .pdrop-toggle-copy { display: flex; flex-direction: column; gap: 2px; }
+    .pdrop-toggle-title { font-size: 13px; font-weight: 600; color: var(--text); }
+    .pdrop-toggle-sub { font-size: 11px; color: var(--muted); }
     .pdrop-nav-link {
       display: flex; align-items: center; gap: 9px;
       padding: 9px 16px; color: var(--muted);
@@ -658,7 +890,7 @@
       /* Drawer → full-width bottom sheet */
       #drawer {
         top: auto; bottom: 0; left: 0; right: 0;
-        width: 100%; height: 85vh;
+        width: 100%; height: 88vh;
         border-left: none; border-top: 1px solid var(--border);
         border-radius: 16px 16px 0 0;
         transform: translateY(calc(100% + 1px));
@@ -673,7 +905,7 @@
       .apt-card { padding: 14px 14px; }
       .apt-thumb { width: 80px; height: 66px; min-width: 80px; }
       .apt-thumb-ph { width: 80px; height: 66px; min-width: 80px; }
-      .card-expand-btn { display: none; } /* use Full View button in drawer instead */
+      .card-expand-btn { display: none; }
     }
   </style>
 </head>
@@ -688,27 +920,75 @@
     <div class="stat" style="margin-left:-4px;">of <strong id="stat-total">—</strong> total</div>
 
     <div class="topbar-right">
-      <div id="user-indicator" onclick="toggleProfileMenu(event)"></div>
-      <!-- Profile / settings dropdown -->
-      <div id="profile-drop">
-        <div class="pdrop-section">
-          <div class="pdrop-user-header">
-            <div class="user-avatar-sm pdrop-avatar" id="pd-avatar">A</div>
-            <div>
-              <div class="pdrop-username" id="pd-name">Andrew</div>
-              <div class="pdrop-sub">Switch account</div>
+      <!-- Alerts button + dropdown -->
+      <div style="position:relative; flex-shrink:0;">
+        <button class="alerts-btn" id="alerts-btn" onclick="toggleAlertsMenu(event)" title="Notifications">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="alerts-badge" id="alerts-badge" style="display:none">0</span>
+        </button>
+        <div id="alerts-drop">
+          <div class="pdrop-section" style="padding-bottom:8px;">
+            <div class="pdrop-label">Recent Activity</div>
+          </div>
+          <div id="alerts-list"></div>
+        </div>
+      </div>
+
+      <!-- Settings button + dropdown -->
+      <div style="position:relative; flex-shrink:0;">
+        <button class="settings-btn" id="settings-btn" onclick="toggleSettingsMenu(event)" title="Settings">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+        </button>
+        <!-- Settings dropdown -->
+        <div id="settings-drop">
+          <div class="pdrop-section">
+            <div class="pdrop-label">Rent Display</div>
+            <button class="pdrop-price-option" id="sd-opt-pp"    onclick="setPriceMode('per_person', event)"><span class="pdrop-radio"></span>Per person (÷3)</button>
+            <button class="pdrop-price-option" id="sd-opt-total" onclick="setPriceMode('total', event)"><span class="pdrop-radio"></span>Total price</button>
+          </div>
+          <div class="pdrop-section">
+            <div class="pdrop-label">Map</div>
+            <div class="pdrop-toggle-row">
+              <div class="pdrop-toggle-copy">
+                <div class="pdrop-toggle-title">MBTA lines + stops</div>
+                <div class="pdrop-toggle-sub">Rapid transit overlay</div>
+              </div>
+              <button class="toggle-pill" id="sd-mbta-pill" onclick="toggleMbtaOverlay(event)" aria-label="Toggle MBTA overlay">
+                <div class="toggle-knob"></div>
+              </button>
+            </div>
+            <div class="pdrop-toggle-row" style="margin-top:10px;">
+              <div class="pdrop-toggle-copy">
+                <div class="pdrop-toggle-title">Display Nicknames</div>
+                <div class="pdrop-toggle-sub">Show labels on map dots</div>
+              </div>
+              <button class="toggle-pill" id="sd-nicknames-pill" onclick="toggleDisplayNicknames(event)" aria-label="Toggle nickname labels">
+                <div class="toggle-knob"></div>
+              </button>
             </div>
           </div>
-          <div id="pd-user-btns" class="pdrop-user-btns"></div>
         </div>
-        <div class="pdrop-section">
-          <div class="pdrop-label">Rent Display</div>
-          <button class="pdrop-price-option" id="pd-opt-pp"    onclick="setPriceMode('per_person', event)"><span class="pdrop-radio"></span>Per person (÷3)</button>
-          <button class="pdrop-price-option" id="pd-opt-total" onclick="setPriceMode('total', event)"><span class="pdrop-radio"></span>Total price</button>
-        </div>
-        <div class="pdrop-links">
-          <a href="/compare" class="pdrop-nav-link"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Group Compare</a>
-          <a href="/admin"   class="pdrop-nav-link"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>Admin Panel</a>
+      </div>
+
+      <!-- User identity + profile dropdown -->
+      <div style="position:relative; flex-shrink:0;">
+        <div id="user-indicator"></div>
+        <!-- Profile dropdown -->
+        <div id="profile-drop">
+          <div class="pdrop-section">
+            <div class="pdrop-user-header">
+              <div class="user-avatar-sm pdrop-avatar" id="pd-avatar">A</div>
+              <div>
+                <div class="pdrop-username" id="pd-name">Andrew</div>
+                <div class="pdrop-sub">Switch account</div>
+              </div>
+            </div>
+            <div id="pd-user-btns" class="pdrop-user-btns"></div>
+          </div>
+          <div class="pdrop-links">
+            <a href="/compare" class="pdrop-nav-link"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Group Compare</a>
+            <a href="/admin"   class="pdrop-nav-link"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>Admin Panel</a>
+          </div>
         </div>
       </div>
     </div>
@@ -772,10 +1052,17 @@
   <!-- Header -->
   <div class="drawer-head">
     <div class="drawer-head-info">
-      <div class="drawer-addr" id="d-addr"></div>
-      <div class="drawer-sub"  id="d-sub"></div>
+      <div class="drawer-addr" id="drawer-addr-row">
+        <span id="d-title-text"></span>
+        <button class="d-nickname-btn" id="d-nickname-btn" title="Edit nickname">✎</button>
+      </div>
+      <div class="d-nickname-edit" id="d-nickname-edit">
+        <input type="text" id="d-nickname-input" placeholder="Add a nickname…" maxlength="40" />
+        <button class="d-nickname-confirm" id="d-nickname-save" title="Save nickname">✓</button>
+        <button class="d-nickname-cancel-btn" id="d-nickname-cancel" title="Cancel">✕</button>
+      </div>
+      <div class="drawer-sub" id="d-sub"></div>
     </div>
-    <a id="drawer-expand-btn" href="#" class="drawer-expand">Full View ↗</a>
     <button class="drawer-close" id="drawer-close-btn">✕</button>
   </div>
 
@@ -786,49 +1073,114 @@
     <button class="d-arrow d-arrow-prev" id="d-img-prev" onclick="drawerNav(-1)">‹</button>
     <button class="d-arrow d-arrow-next" id="d-img-next" onclick="drawerNav(1)">›</button>
     <div class="d-photo-badge" id="d-photo-badge"></div>
+    <button class="d-expand-btn" id="d-expand-btn">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></svg>
+      Expand
+    </button>
   </div>
 
   <!-- Scrollable body -->
   <div class="drawer-body">
 
-    <div class="stat-grid">
-      <div class="stat-cell"><div class="stat-val" id="d-rent">—</div><div class="stat-key" id="d-rent-key">/ mo</div></div>
-      <div class="stat-cell"><div class="stat-val" id="d-beds">—</div><div class="stat-key">Beds</div></div>
-      <div class="stat-cell"><div class="stat-val" id="d-baths">—</div><div class="stat-key">Baths</div></div>
-      <div class="stat-cell"><div class="stat-val" id="d-sqft">—</div><div class="stat-key">Sq Ft</div></div>
+    <!-- Rent block -->
+    <div class="d-rent-block">
+      <div>
+        <span class="d-rent-amount" id="d-rent">—</span>
+        <span class="d-rent-per" id="d-rent-key">/mo</span>
+      </div>
+      <div class="d-rent-address" id="d-addr-full"></div>
+      <div class="d-rent-neigh" id="d-neigh"></div>
     </div>
 
-    <div class="avail-row">
+    <!-- Stat pills -->
+    <div class="d-stat-pills">
+      <div class="d-stat-pill"><div class="d-val" id="d-beds">—</div><div class="d-lbl">Beds</div></div>
+      <div class="d-stat-pill"><div class="d-val" id="d-baths">—</div><div class="d-lbl">Baths</div></div>
+      <div class="d-stat-pill"><div class="d-val" id="d-sqft">—</div><div class="d-lbl">Sq Ft</div></div>
+    </div>
+
+    <!-- Availability -->
+    <div class="d-info-row">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:0.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
       <span>Available: <strong id="d-avail">—</strong></span>
-      <span id="d-nofee-badge"  style="display:none;" class="avail-badge green">No Fee</span>
-      <span id="d-pet-badge"    style="display:none;" class="avail-badge green" >Pets OK</span>
+      <span class="d-info-spacer"></span>
+      <span id="d-nofee-badge" style="display:none;" class="d-badge d-badge-green">No Fee</span>
+      <span id="d-pet-badge"   style="display:none;" class="d-badge d-badge-green">Pets OK</span>
     </div>
 
-    <div class="cat-row">
-      <button class="cat-btn yes"   data-cat="yes"  ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Yes</button>
-      <button class="cat-btn maybe" data-cat="maybe"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg> Maybe</button>
-      <button class="cat-btn no"    data-cat="no"   ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> No</button>
+    <div class="d-divider"></div>
+
+    <!-- Your Vote -->
+    <div class="d-section">
+      <div class="d-section-title">Your Vote</div>
+      <div id="d-no-user-hint" style="display:none; font-size:11px; color:var(--muted); font-style:italic; margin-bottom:8px; cursor:pointer;" onclick="openUserModal()">
+        👤 Select who you are to vote
+      </div>
+      <div class="vote-row">
+        <button class="vote-btn yes"   data-cat="yes"  ><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Yes</button>
+        <button class="vote-btn maybe" data-cat="maybe"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg> Maybe</button>
+        <button class="vote-btn no"    data-cat="no"   ><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> No</button>
+      </div>
     </div>
 
-    <div class="section-label">Group Notes</div>
-    <div class="notes-thread" id="d-notes-thread"></div>
-
-    <div class="notes-divider"></div>
-    <div class="notes-own-label" id="d-notes-own-label">Your note</div>
-    <div id="d-no-user-hint" style="display:none; font-size:11px; color:var(--muted); font-style:italic; margin-bottom:8px; cursor:pointer;" onclick="openUserModal()">
-      👤 Select who you are to add a note
-    </div>
-    <textarea id="notes-ta" placeholder="Write something…"></textarea>
-    <div class="notes-footer">
-      <button id="notes-save-btn">Save</button>
-      <span id="notes-feedback">Saved</span>
+    <!-- Group -->
+    <div class="d-section">
+      <div class="d-section-title">Group</div>
+      <div class="roommates-row">
+        <div class="roommate-slot">
+          <div class="roommate-avatar" style="background:#6366f1">A</div>
+          <div class="roommate-name">Andrew</div>
+          <div class="roommate-vote" id="rm-andrew">—</div>
+          <div class="roommate-note" id="rn-andrew"></div>
+        </div>
+        <div class="roommate-slot">
+          <div class="roommate-avatar" style="background:#22d3ee">L</div>
+          <div class="roommate-name">Liam</div>
+          <div class="roommate-vote" id="rm-liam">—</div>
+          <div class="roommate-note" id="rn-liam"></div>
+        </div>
+        <div class="roommate-slot">
+          <div class="roommate-avatar" style="background:#f59e0b">J</div>
+          <div class="roommate-name">Joe</div>
+          <div class="roommate-vote" id="rm-joe">—</div>
+          <div class="roommate-note" id="rn-joe"></div>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--border);margin:12px 0 10px;"></div>
+      <div id="d-no-user-hint-chat" style="display:none; font-size:11px; color:var(--muted); font-style:italic; margin-bottom:6px; cursor:pointer;" onclick="openUserModal()">
+        👤 Select who you are to add a note
+      </div>
+      <div class="d-chat-row">
+        <input type="text" id="d-chat-input" placeholder="Add a note…" />
+        <button id="d-chat-send">Send</button>
+      </div>
     </div>
 
     <a id="d-source-link" class="source-link" href="#" target="_blank">
       <span>View on Metro Realty</span>
       <span style="margin-left:auto; opacity:0.45; font-size:10px;">↗</span>
     </a>
+  </div>
+</div>
+
+<!-- ── Drawer lightbox ── -->
+<div id="d-lightbox">
+  <button id="d-lb-close" onclick="closeDrawerLightbox()">✕</button>
+  <button class="d-lb-nav" id="d-lb-prev" onclick="drawerLbNav(-1)">‹</button>
+  <img id="d-lb-img" src="" alt="" />
+  <button class="d-lb-nav" id="d-lb-next" onclick="drawerLbNav(1)">›</button>
+  <div id="d-lb-counter"></div>
+</div>
+
+<!-- ── Cluster selection modal ── -->
+<div id="cluster-modal-backdrop" onclick="closeClusterModal()"></div>
+<div id="cluster-modal">
+  <div class="cluster-box">
+    <div class="cluster-box-header">
+      <span class="cluster-box-title">Select a listing</span>
+      <button class="cluster-box-close" onclick="closeClusterModal()">✕</button>
+    </div>
+    <div id="cluster-list"></div>
   </div>
 </div>
 
@@ -975,6 +1327,10 @@ function selectUser(user, e) {
   closeUserModal();
   closeProfileMenu();
   updateUserIndicator();
+  if (allApts.length) {
+    computedAlerts = computeAlerts(allApts);
+    updateAlertsBadge();
+  }
   render();
   if (drawerApt) openDrawer(drawerApt);
 }
@@ -1017,15 +1373,30 @@ function renderProfileUserBtns() {
 }
 
 function toggleProfileMenu(e) {
-  if (e) e.stopPropagation();
+  if (e && typeof e.stopPropagation === "function") e.stopPropagation();
   const drop = document.getElementById("profile-drop");
-  drop.classList.toggle("open");
+  const shouldOpen = !drop.classList.contains("open");
+  closeProfileMenu();
+  closeSettingsMenu();
+  closeAlertsMenu();
+  if (shouldOpen) drop.classList.add("open");
+}
+function bindProfileMenuTrigger() {
+  const trigger = document.getElementById("user-indicator");
+  if (!trigger || trigger.dataset.boundClick === "1") return;
+  trigger.addEventListener("click", toggleProfileMenu);
+  trigger.dataset.boundClick = "1";
 }
 function closeProfileMenu() {
   document.getElementById("profile-drop")?.classList.remove("open");
 }
-// Close on outside click
-document.addEventListener("click", closeProfileMenu);
+document.getElementById("profile-drop")?.addEventListener("click", e => e.stopPropagation());
+document.addEventListener("click", function(e) {
+  const drop = document.getElementById("profile-drop");
+  const trigger = document.getElementById("user-indicator");
+  if (!drop || !trigger) return;
+  if (!drop.contains(e.target) && !trigger.contains(e.target)) closeProfileMenu();
+});
 
 // Close modal on backdrop click
 document.getElementById("user-modal").addEventListener("click", function(e) {
@@ -1037,6 +1408,24 @@ const map = L.map("map", { zoomControl: true }).setView([42.345, -71.082], 14);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
   attribution: '&copy; OSM &copy; CARTO', subdomains: "abcd", maxZoom: 19,
 }).addTo(map);
+
+const MBTA_COLORS = {
+  BLUE: "#3b82f6",
+  GREEN: "#22c55e",
+  ORANGE: "#f97316",
+  RED: "#ef4444",
+  SILVER: "#94a3b8",
+};
+const mbtaOverlayEnabledDefault = localStorage.getItem("apartment_mbta_overlay") !== "0";
+let mbtaOverlayEnabled = mbtaOverlayEnabledDefault;
+let mbtaOverlayLoaded = false;
+let mbtaLinesLayer = null;
+let mbtaStopsLayer = null;
+
+map.createPane("mbtaLinesPane");
+map.getPane("mbtaLinesPane").style.zIndex = "430";
+map.createPane("mbtaStopsPane");
+map.getPane("mbtaStopsPane").style.zIndex = "460";
 
 // Boundary polygon (read-only)
 let boundaryLayer = null;
@@ -1054,7 +1443,9 @@ let activeFilter = "all";     // "all" | "yes" | "maybe" | "no" | "unsorted"
 let boundaryOnly = true;      // toggled by the boundary chip
 let activeId = null;
 let markers = {};
+let clusterGroup = null;
 let priceMode = localStorage.getItem("apartment_price_mode") || "per_person"; // "total" | "per_person"
+let displayNicknames = localStorage.getItem("apartment_display_nicknames") === "1";
 
 // ── Price formatting ───────────────────────────────────────────────────────────
 function fmtRent(rent) {
@@ -1067,10 +1458,109 @@ function fmtRentUnit() {
 }
 function updatePriceModeDisplay() {
   const isPerPerson = priceMode === "per_person";
-  const ppEl    = document.getElementById("pd-opt-pp");
-  const totalEl = document.getElementById("pd-opt-total");
+  const ppEl    = document.getElementById("sd-opt-pp");
+  const totalEl = document.getElementById("sd-opt-total");
   if (ppEl)    ppEl.classList.toggle("active",  isPerPerson);
   if (totalEl) totalEl.classList.toggle("active", !isPerPerson);
+}
+
+function updateMbtaOverlayToggle() {
+  const pill = document.getElementById("sd-mbta-pill");
+  if (pill) pill.classList.toggle("on", mbtaOverlayEnabled);
+}
+
+function updateDisplayNicknamesToggle() {
+  const pill = document.getElementById("sd-nicknames-pill");
+  if (pill) pill.classList.toggle("on", displayNicknames);
+}
+
+function toggleDisplayNicknames(e) {
+  if (e) e.stopPropagation();
+  displayNicknames = !displayNicknames;
+  localStorage.setItem("apartment_display_nicknames", displayNicknames ? "1" : "0");
+  updateDisplayNicknamesToggle();
+  render();
+}
+
+async function ensureMbtaOverlayLoaded() {
+  if (mbtaOverlayLoaded) return;
+  const [linesResp, stopsResp] = await Promise.all([
+    fetch("/static/data/mbta_arc.geojson"),
+    fetch("/static/data/mbta_node.geojson"),
+  ]);
+  if (!linesResp.ok || !stopsResp.ok) throw new Error("Could not load MBTA overlay data");
+  const [linesGeojson, stopsGeojson] = await Promise.all([linesResp.json(), stopsResp.json()]);
+
+  mbtaLinesLayer = L.geoJSON(linesGeojson, {
+    pane: "mbtaLinesPane",
+    style: (feature) => {
+      const line = feature?.properties?.LINE;
+      return {
+        color: MBTA_COLORS[line] || "#a1a1aa",
+        weight: 3,
+        opacity: 0.2,
+      };
+    },
+  });
+  mbtaStopsLayer = L.geoJSON(stopsGeojson, {
+    pane: "mbtaStopsPane",
+    pointToLayer: (feature, latlng) => {
+      const line = feature?.properties?.LINE;
+      return L.circleMarker(latlng, {
+        radius: 3,
+        color: "transparent",
+        weight: 0,
+        fillColor: MBTA_COLORS[line] || "#a1a1aa",
+        fillOpacity: 0.3,
+      });
+    },
+    onEachFeature: (feature, layer) => {
+      const station = feature?.properties?.STATION || "Station";
+      const route = feature?.properties?.ROUTE || feature?.properties?.LINE || "";
+      layer.bindTooltip(route ? `${station} (${route})` : station, {
+        direction: "top",
+        offset: [0, -5],
+      });
+    },
+  });
+
+  mbtaOverlayLoaded = true;
+}
+
+function setMbtaOverlayEnabled(enabled) {
+  mbtaOverlayEnabled = !!enabled;
+  localStorage.setItem("apartment_mbta_overlay", mbtaOverlayEnabled ? "1" : "0");
+  updateMbtaOverlayToggle();
+
+  if (!mbtaOverlayLoaded) return;
+  if (mbtaOverlayEnabled) {
+    if (mbtaLinesLayer && !map.hasLayer(mbtaLinesLayer)) map.addLayer(mbtaLinesLayer);
+    if (mbtaStopsLayer && !map.hasLayer(mbtaStopsLayer)) map.addLayer(mbtaStopsLayer);
+  } else {
+    if (mbtaLinesLayer && map.hasLayer(mbtaLinesLayer)) map.removeLayer(mbtaLinesLayer);
+    if (mbtaStopsLayer && map.hasLayer(mbtaStopsLayer)) map.removeLayer(mbtaStopsLayer);
+  }
+}
+
+async function syncMbtaOverlay() {
+  if (!mbtaOverlayEnabled) {
+    setMbtaOverlayEnabled(false);
+    return;
+  }
+  try {
+    await ensureMbtaOverlayLoaded();
+    setMbtaOverlayEnabled(true);
+  } catch (err) {
+    console.warn(err);
+    setMbtaOverlayEnabled(false);
+    toast("Could not load MBTA overlay");
+  }
+}
+
+function toggleMbtaOverlay(e) {
+  if (e) e.stopPropagation();
+  mbtaOverlayEnabled = !mbtaOverlayEnabled;
+  syncMbtaOverlay();
 }
 // Keep alias so apartment.html-style calls don't break
 const updatePriceModeBtn = updatePriceModeDisplay;
@@ -1087,6 +1577,7 @@ function setPriceMode(mode, e) {
     if (key) key.textContent = fmtRentUnit();
   }
 }
+
 function togglePriceMode() { setPriceMode(priceMode === "total" ? "per_person" : "total"); }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1124,6 +1615,8 @@ function sortList(list) {
 async function load() {
   const r = await fetch("/api/apartments");
   allApts = await r.json();
+  computedAlerts = computeAlerts(allApts);
+  updateAlertsBadge();
   render();
 }
 
@@ -1166,6 +1659,9 @@ function renderList(apts) {
       : `<span class="tag outside-tag">Outside</span>`;
     const sqftPill = a.sqft ? `<span class="tag">${a.sqft} ft²</span>` : "";
 
+    const nickname = getNickname(a.id);
+    const displayTitle = nickname || a.address;
+
     return `<div class="apt-card${a.id === activeId ? " active" : ""}${!a.within_boundary ? " outside" : ""}"
          data-id="${a.id}" onclick="selectApt(${a.id})">
       ${thumb}
@@ -1174,11 +1670,10 @@ function renderList(apts) {
           <div class="apt-rent">${fmtRent(a.rent)}<span style="font-size:10px;font-weight:400;color:var(--muted)">${fmtRentUnit()}</span></div>
           ${catPill}
         </div>
-        <div class="apt-address">${a.address}</div>
+        <div class="apt-address">${displayTitle}</div>
         <div class="apt-meta">${a.bedrooms ?? "?"}bd / ${a.bathrooms ?? "?"}ba${a.neighborhood ? " · " + a.neighborhood : ""}${a.available_from ? " · avail " + a.available_from : ""}</div>
         <div class="apt-tags">${boundaryPill}${nofeePill}${sqftPill}</div>
       </div>
-      <a href="/apartment/${a.id}" class="card-expand-btn" onclick="event.stopPropagation()">↗</a>
     </div>`;
   }).join("");
 }
@@ -1189,7 +1684,32 @@ const CAT_COLORS = { yes: "#22c55e", maybe: "#f59e0b", no: "#ef4444", unsorted: 
 function makeMarker(a) {
   const color = CAT_COLORS[getUserCat(a)] || CAT_COLORS.unsorted;
   const size = a.within_boundary ? 14 : 10;
-  const opacity = a.within_boundary ? "1" : "0.45";
+  const opacity = a.within_boundary ? 1 : 0.45;
+  const nickname = displayNicknames ? getNickname(a.id) : "";
+
+  if (nickname) {
+    const label = nickname.replace(/</g, "&lt;");
+    return L.divIcon({
+      className: "",
+      html: `<div style="position:relative;opacity:${opacity}">
+        <div style="
+          position:absolute;bottom:${size + 5}px;left:50%;transform:translateX(-50%);
+          background:${color};color:#fff;font-size:9px;font-weight:700;
+          padding:2px 5px;border-radius:4px;white-space:nowrap;
+          box-shadow:0 1px 4px rgba(0,0,0,0.45);pointer-events:none;
+          font-family:'Inter',sans-serif;
+        ">${label}</div>
+        <div style="
+          width:${size}px;height:${size}px;border-radius:50%;
+          background:${color};border:2.5px solid rgba(255,255,255,0.9);
+          box-shadow:0 1px 6px rgba(0,0,0,0.55);cursor:pointer;
+        "></div>
+      </div>`,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+    });
+  }
+
   return L.divIcon({
     className: "",
     html: `<div style="
@@ -1203,25 +1723,63 @@ function makeMarker(a) {
   });
 }
 
+function createClusterIcon(cluster) {
+  const count = cluster.getChildCount();
+  const children = cluster.getAllChildMarkers();
+  const cats = children.map(m => m._apt ? getUserCat(m._apt) : "unsorted");
+  const counts = cats.reduce((acc, c) => { acc[c] = (acc[c] || 0) + 1; return acc; }, {});
+  const dominant = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || "unsorted";
+  const color = CAT_COLORS[dominant] || CAT_COLORS.unsorted;
+  const allIn = children.every(m => m._apt?.within_boundary);
+  return L.divIcon({
+    className: "",
+    html: `<div style="
+      width:32px;height:32px;border-radius:50%;
+      background:${color};border:2.5px solid rgba(255,255,255,0.9);
+      box-shadow:0 2px 10px rgba(0,0,0,0.55);
+      display:flex;align-items:center;justify-content:center;
+      font-size:11px;font-weight:800;color:#fff;
+      cursor:pointer;opacity:${allIn ? 1 : 0.75};
+      font-family:'Inter',sans-serif;
+    ">${count}</div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+  });
+}
+
 function renderMarkers(apts) {
-  Object.values(markers).forEach(m => map.removeLayer(m));
+  // Lazily create the cluster group
+  if (!clusterGroup) {
+    clusterGroup = L.markerClusterGroup({
+      showCoverageOnHover: false,
+      maxClusterRadius: 22,
+      animate: false,
+      iconCreateFunction: createClusterIcon,
+      zoomToBoundsOnClick: false,
+      spiderfyOnMaxZoom: false,
+      disableClusteringAtZoom: 19,
+    });
+    clusterGroup.on("clusterclick", function(e) {
+      const children = e.layer.getAllChildMarkers();
+      const clusterApts = children.map(m => m._apt).filter(Boolean);
+      showClusterModal(clusterApts);
+      L.DomEvent.stopPropagation(e);
+    });
+    map.addLayer(clusterGroup);
+  }
+
+  clusterGroup.clearLayers();
   markers = {};
 
-  // Always show all apts as markers so context is visible, but dim outside-boundary ones
-  const toShow = boundaryOnly
-    ? allApts  // show all pins on map; sidebar list is filtered
-    : allApts;
-
-  toShow.forEach(a => {
+  allApts.forEach(a => {
     if (!a.latitude || !a.longitude) return;
-    const m = L.marker([a.latitude, a.longitude], { icon: makeMarker(a) })
-      .bindPopup(`
-        <strong>${a.address}</strong><br>
-        $${(a.rent||0).toLocaleString()}/mo · ${a.bedrooms ?? "?"}bd/${a.bathrooms ?? "?"}ba
-        ${a.within_boundary ? "" : '<br><span style="color:var(--muted);font-size:10px;">Outside your boundary</span>'}
-      `, { maxWidth: 220 })
-      .on("click", () => selectApt(a.id));
-    m.addTo(map);
+    const m = L.marker([a.latitude, a.longitude], { icon: makeMarker(a) });
+    m._apt = a;
+    m.on("click", function(e) {
+      L.DomEvent.stopPropagation(e);
+      selectApt(a.id);
+    });
+    clusterGroup.addLayer(m);
     markers[a.id] = m;
   });
 }
@@ -1238,13 +1796,24 @@ function selectApt(id) {
   const card = document.querySelector(`.apt-card[data-id="${id}"]`);
   if (card) card.scrollIntoView({ block: "nearest", behavior: "smooth" });
 
-  // Pan map
+  // Pan map (no popup — we open the drawer instead)
   if (apt.latitude && apt.longitude) {
     map.panTo([apt.latitude, apt.longitude], { animate: true });
-    markers[id]?.openPopup();
   }
 
   openDrawer(apt);
+}
+
+// ── Nickname ──────────────────────────────────────────────────────────────────
+function getNickname(aptId) {
+  return localStorage.getItem(`nickname_${aptId}`) || "";
+}
+function setNickname(aptId, name) {
+  if (name && name.trim()) {
+    localStorage.setItem(`nickname_${aptId}`, name.trim());
+  } else {
+    localStorage.removeItem(`nickname_${aptId}`);
+  }
 }
 
 // ── Detail drawer ──────────────────────────────────────────────────────────────
@@ -1255,6 +1824,11 @@ const USERS_LIST = [
   { key: "liam",   name: "Liam",   initial: "L", color: "#22d3ee" },
   { key: "joe",    name: "Joe",    initial: "J", color: "#f59e0b" },
 ];
+const CHECK_SVG_SM = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>`;
+const MINUS_SVG_SM = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+const XMARK_SVG_SM = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+const VOTE_LABELS = { yes: `${CHECK_SVG_SM} Yes`, maybe: `${MINUS_SVG_SM} Maybe`, no: `${XMARK_SVG_SM} No`, unsorted: "—" };
+const VOTE_COLORS = { yes: "var(--green)", maybe: "var(--amber)", no: "var(--red)", unsorted: "var(--muted)" };
 
 function drawerShowPhoto(idx) {
   const imgs = drawerApt?.images || [];
@@ -1263,34 +1837,30 @@ function drawerShowPhoto(idx) {
   const el = document.getElementById("d-main-img");
   el.style.opacity = "0";
   setTimeout(() => { el.src = imgs[drawerPhotoIdx]; el.style.opacity = "1"; }, 80);
-  document.getElementById("d-photo-badge").textContent = `${drawerPhotoIdx + 1} / ${imgs.length}`;
+  document.getElementById("d-photo-badge").textContent = imgs.length > 1 ? `${drawerPhotoIdx + 1} / ${imgs.length}` : "";
   document.getElementById("d-img-prev").style.display = drawerPhotoIdx === 0 ? "none" : "";
   document.getElementById("d-img-next").style.display = drawerPhotoIdx === imgs.length - 1 ? "none" : "";
 }
 function drawerNav(dir) { drawerShowPhoto(drawerPhotoIdx + dir); }
 
-function renderNotesThread(apt, containerId) {
-  const user = getCurrentUser();
-  const container = document.getElementById(containerId);
-  if (!container) return;
-  const ratings = apt.user_ratings || {};
-  container.innerHTML = USERS_LIST.map(u => {
-    const note = (ratings[u.key]?.notes || "").trim();
-    const isOwn = u.key === user;
-    const avatarHtml = `<div class="note-avatar" style="background:${u.color}">${u.initial}</div>`;
-    const nameLabel = u.name + (isOwn ? " · you" : "");
-    const bodyHtml = note
-      ? `<div class="note-text">${note.replace(/</g, "&lt;").replace(/\n/g, "<br>")}</div>`
-      : `<div class="note-empty">No note yet</div>`;
-    return `<div class="note-bubble${isOwn ? " own" : ""}">
-      ${!isOwn ? avatarHtml : ""}
-      <div class="note-content">
-        <div class="note-who">${nameLabel}</div>
-        ${bodyHtml}
-      </div>
-      ${isOwn ? avatarHtml : ""}
-    </div>`;
-  }).join("");
+
+function updateGroupVotes() {
+  if (!drawerApt) return;
+  USERS_LIST.forEach(u => {
+    const voteEl = document.getElementById(`rm-${u.key}`);
+    const noteEl = document.getElementById(`rn-${u.key}`);
+    if (!voteEl) return;
+    const rating = drawerApt.user_ratings?.[u.key] || {};
+    const cat = rating.list_category || "unsorted";
+    voteEl.innerHTML = VOTE_LABELS[cat] || "—";
+    voteEl.style.color = VOTE_COLORS[cat] || "var(--muted)";
+    voteEl.style.fontStyle = cat === "unsorted" ? "italic" : "normal";
+    if (noteEl) {
+      const note = (rating.notes || "").trim();
+      noteEl.textContent = note;
+      noteEl.style.display = note ? "" : "none";
+    }
+  });
 }
 
 function openDrawer(apt) {
@@ -1299,15 +1869,23 @@ function openDrawer(apt) {
   const user = getCurrentUser();
   const userRating = (user && apt.user_ratings?.[user]) || {};
 
-  document.getElementById("d-addr").textContent = apt.address;
-  document.getElementById("drawer-expand-btn").href = `/apartment/${apt.id}`;
+  // Title: nickname (if set) or address
+  const nickname = getNickname(apt.id);
+  const titleEl = document.getElementById("d-title-text");
+  if (titleEl) titleEl.textContent = nickname || apt.address;
+
+  // Subtitle
   const subParts = [apt.neighborhood, apt.within_boundary ? "In boundary" : "Outside boundary"].filter(Boolean);
   document.getElementById("d-sub").textContent = subParts.join(" · ");
 
-  // Stats
-  document.getElementById("d-rent").textContent  = fmtRent(apt.rent);
+  // Rent block
+  document.getElementById("d-rent").textContent = fmtRent(apt.rent);
   const dRentKey = document.getElementById("d-rent-key");
   if (dRentKey) dRentKey.textContent = fmtRentUnit();
+  document.getElementById("d-addr-full").textContent = apt.address;
+  document.getElementById("d-neigh").textContent = [apt.neighborhood, apt.zip_code].filter(Boolean).join(", ");
+
+  // Stats
   document.getElementById("d-beds").textContent  = apt.bedrooms ?? "—";
   document.getElementById("d-baths").textContent = apt.bathrooms ?? "—";
   document.getElementById("d-sqft").textContent  = apt.sqft ?? "—";
@@ -1317,54 +1895,54 @@ function openDrawer(apt) {
 
   // Gallery
   const imgs = apt.images || [];
-  const mainImg = document.getElementById("d-main-img");
+  const mainImg  = document.getElementById("d-main-img");
   const noPhotos = document.getElementById("d-no-photos");
+  const expandBtn = document.getElementById("d-expand-btn");
   if (imgs.length) {
     mainImg.src = imgs[0];
     mainImg.style.display = "";
     noPhotos.style.display = "none";
+    expandBtn.style.display = "";
     document.getElementById("d-photo-badge").textContent = imgs.length > 1 ? `1 / ${imgs.length}` : "";
     document.getElementById("d-img-prev").style.display = "none";
     document.getElementById("d-img-next").style.display = imgs.length > 1 ? "" : "none";
   } else {
     mainImg.style.display = "none";
     noPhotos.style.display = "";
+    expandBtn.style.display = "none";
     document.getElementById("d-photo-badge").textContent = "";
     document.getElementById("d-img-prev").style.display = "none";
     document.getElementById("d-img-next").style.display = "none";
   }
 
-  // Category buttons
+  // Vote buttons
   const currentCat = userRating.list_category || "unsorted";
-  document.querySelectorAll(".cat-btn").forEach(btn => {
+  document.querySelectorAll(".vote-btn").forEach(btn => {
     const c = btn.dataset.cat;
-    btn.className = `cat-btn ${c}`;
+    btn.className = `vote-btn ${c}`;
     if (currentCat === c) btn.classList.add(`on-${c}`);
     btn.disabled = !user;
     btn.style.opacity = user ? "" : "0.4";
     btn.style.cursor  = user ? "" : "not-allowed";
   });
 
-  // Group notes thread
-  renderNotesThread(apt, "d-notes-thread");
+  // Group votes + notes
+  updateGroupVotes();
 
-  // Own note input
+  // Chat input state
   const hasUser = !!user;
   document.getElementById("d-no-user-hint").style.display = hasUser ? "none" : "";
-  document.getElementById("d-notes-own-label").textContent = hasUser
-    ? `Your note (${USER_CONFIG[user]?.name || "you"})` : "Your note";
-  document.getElementById("notes-ta").value    = userRating.notes || "";
-  document.getElementById("notes-ta").disabled = !hasUser;
-  document.getElementById("notes-ta").style.opacity = hasUser ? "" : "0.4";
-  document.getElementById("notes-save-btn").disabled = !hasUser;
-  document.getElementById("notes-save-btn").style.opacity = hasUser ? "" : "0.4";
-  document.getElementById("notes-feedback").classList.remove("show");
+  document.getElementById("d-no-user-hint-chat").style.display = hasUser ? "none" : "";
+  document.getElementById("d-chat-input").value = "";
+  document.getElementById("d-chat-input").disabled = !hasUser;
+  document.getElementById("d-chat-send").disabled = !hasUser;
 
   document.getElementById("d-source-link").href = apt.source_url || "#";
   document.getElementById("drawer").classList.add("open");
 }
 
 function closeDrawer() {
+  cancelNicknameEdit();
   document.getElementById("drawer").classList.remove("open");
   drawerApt = null;
   activeId = null;
@@ -1373,8 +1951,42 @@ function closeDrawer() {
 
 document.getElementById("drawer-close-btn").addEventListener("click", closeDrawer);
 
-// ── Category buttons in drawer ────────────────────────────────────────────────
-document.querySelectorAll(".cat-btn").forEach(btn => {
+// ── Nickname inline edit ───────────────────────────────────────────────────────
+function openNicknameEdit() {
+  if (!drawerApt) return;
+  document.getElementById("d-nickname-input").value = getNickname(drawerApt.id);
+  document.getElementById("drawer-addr-row").style.display = "none";
+  document.getElementById("d-nickname-edit").classList.add("visible");
+  const inp = document.getElementById("d-nickname-input");
+  inp.focus(); inp.select();
+}
+
+function saveNicknameEdit() {
+  if (!drawerApt) return;
+  const val = document.getElementById("d-nickname-input").value;
+  setNickname(drawerApt.id, val);
+  document.getElementById("d-title-text").textContent = val.trim() || drawerApt.address;
+  const card = document.querySelector(`.apt-card[data-id="${drawerApt.id}"] .apt-address`);
+  if (card) card.textContent = val.trim() || drawerApt.address;
+  cancelNicknameEdit();
+  if (displayNicknames) render();
+}
+
+function cancelNicknameEdit() {
+  document.getElementById("drawer-addr-row").style.display = "";
+  document.getElementById("d-nickname-edit").classList.remove("visible");
+}
+
+document.getElementById("d-nickname-btn").addEventListener("click", openNicknameEdit);
+document.getElementById("d-nickname-save").addEventListener("click", saveNicknameEdit);
+document.getElementById("d-nickname-cancel").addEventListener("click", cancelNicknameEdit);
+document.getElementById("d-nickname-input").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") saveNicknameEdit();
+  if (e.key === "Escape") cancelNicknameEdit();
+});
+
+// ── Vote buttons in drawer ────────────────────────────────────────────────────
+document.querySelectorAll(".vote-btn").forEach(btn => {
   btn.addEventListener("click", async function() {
     if (!drawerApt) return;
     const user = getCurrentUser();
@@ -1385,7 +1997,6 @@ document.querySelectorAll(".cat-btn").forEach(btn => {
       body: JSON.stringify({ user, list_category: cat }),
     });
 
-    // Update local cache
     if (!drawerApt.user_ratings) drawerApt.user_ratings = {};
     drawerApt.user_ratings[user] = { ...(drawerApt.user_ratings[user] || {}), list_category: cat };
     const apt = allApts.find(a => a.id === drawerApt.id);
@@ -1394,26 +2005,39 @@ document.querySelectorAll(".cat-btn").forEach(btn => {
       apt.user_ratings[user] = { ...(apt.user_ratings[user] || {}), list_category: cat };
     }
 
-    document.querySelectorAll(".cat-btn").forEach(b => {
+    document.querySelectorAll(".vote-btn").forEach(b => {
       const c = b.dataset.cat;
-      b.className = `cat-btn ${c}`;
+      b.className = `vote-btn ${c}`;
       if (c === cat) b.classList.add(`on-${c}`);
     });
+    updateGroupVotes();
 
+    // Update this marker's icon and refresh clusters
     const m = markers[drawerApt.id];
-    if (m) m.setIcon(makeMarker(drawerApt));
-
+    if (m) {
+      m.setIcon(makeMarker(drawerApt));
+      if (clusterGroup) clusterGroup.refreshClusters(m);
+    }
     render();
     toast(`Marked as "${cat}"`);
   });
 });
 
-// ── Notes ─────────────────────────────────────────────────────────────────────
-document.getElementById("notes-save-btn").addEventListener("click", async () => {
+// ── Chat / notes send ─────────────────────────────────────────────────────────
+async function sendDrawerNote() {
   if (!drawerApt) return;
   const user = getCurrentUser();
   if (!user) { openUserModal(); return; }
-  const notes = document.getElementById("notes-ta").value;
+  const input = document.getElementById("d-chat-input");
+  const notes = input.value.trim();
+  if (!notes) return;
+
+  const existingNote = (drawerApt.user_ratings?.[user]?.notes || "").trim();
+  if (existingNote) {
+    const ok = confirm("You already have a note on this listing. Sending will replace it. Continue?");
+    if (!ok) return;
+  }
+
   await fetch(`/api/apartments/${drawerApt.id}/rank`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ user, notes }),
@@ -1425,10 +2049,243 @@ document.getElementById("notes-save-btn").addEventListener("click", async () => 
     if (!apt.user_ratings) apt.user_ratings = {};
     apt.user_ratings[user] = { ...(apt.user_ratings[user] || {}), notes };
   }
-  renderNotesThread(drawerApt, "d-notes-thread");
-  const fb = document.getElementById("notes-feedback");
-  fb.classList.add("show");
-  setTimeout(() => fb.classList.remove("show"), 2000);
+  updateGroupVotes();
+  input.value = "";
+  toast("Note sent");
+}
+
+document.getElementById("d-chat-send").addEventListener("click", sendDrawerNote);
+document.getElementById("d-chat-input").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") sendDrawerNote();
+});
+
+// ── Drawer lightbox ───────────────────────────────────────────────────────────
+let drawerLbOpen = false;
+
+function openDrawerLightbox(idx) {
+  const imgs = drawerApt?.images || [];
+  if (!imgs.length) return;
+  drawerLbOpen = true;
+  document.getElementById("d-lightbox").classList.add("open");
+  setDrawerLbPhoto(idx);
+}
+
+function closeDrawerLightbox() {
+  drawerLbOpen = false;
+  document.getElementById("d-lightbox").classList.remove("open");
+}
+
+function setDrawerLbPhoto(idx) {
+  const imgs = drawerApt?.images || [];
+  drawerPhotoIdx = Math.max(0, Math.min(idx, imgs.length - 1));
+  document.getElementById("d-lb-img").src = imgs[drawerPhotoIdx];
+  document.getElementById("d-lb-counter").textContent = `${drawerPhotoIdx + 1} / ${imgs.length}`;
+  document.getElementById("d-lb-prev").style.display = drawerPhotoIdx === 0 ? "none" : "";
+  document.getElementById("d-lb-next").style.display = drawerPhotoIdx === imgs.length - 1 ? "none" : "";
+}
+
+function drawerLbNav(dir) { setDrawerLbPhoto(drawerPhotoIdx + dir); }
+
+document.getElementById("d-lightbox").addEventListener("click", function(e) {
+  if (e.target === this) closeDrawerLightbox();
+});
+document.getElementById("d-expand-btn").addEventListener("click", function() {
+  openDrawerLightbox(drawerPhotoIdx);
+});
+
+document.addEventListener("keydown", function(e) {
+  if (drawerLbOpen) {
+    if (e.key === "Escape") { closeDrawerLightbox(); return; }
+    if (e.key === "ArrowLeft")  drawerLbNav(-1);
+    if (e.key === "ArrowRight") drawerLbNav(1);
+  }
+});
+
+// ── Cluster selection modal ───────────────────────────────────────────────────
+function showClusterModal(clusterApts) {
+  const list = document.getElementById("cluster-list");
+  list.innerHTML = clusterApts.map(a => {
+    const nickname = getNickname(a.id);
+    const title = (nickname || a.address).replace(/</g, "&lt;");
+    const addr  = nickname ? a.address.replace(/</g, "&lt;") : "";
+    const color = CAT_COLORS[getUserCat(a)] || CAT_COLORS.unsorted;
+    const thumb = a.images?.[0];
+    return `<div class="cluster-item" onclick="selectAptFromCluster(${a.id})">
+      ${thumb
+        ? `<img class="cluster-thumb" src="${thumb}" loading="lazy" alt="" />`
+        : `<div class="cluster-thumb-ph">🏠</div>`}
+      <div class="cluster-info">
+        <div class="cluster-title">${title}</div>
+        ${addr ? `<div class="cluster-addr">${addr}</div>` : ""}
+        <div class="cluster-meta">${fmtRent(a.rent)} · ${a.bedrooms ?? "?"}bd / ${a.bathrooms ?? "?"}ba</div>
+      </div>
+      <div class="cluster-cat-dot" style="background:${color}"></div>
+    </div>`;
+  }).join("");
+  document.getElementById("cluster-modal").classList.add("open");
+  document.getElementById("cluster-modal-backdrop").classList.add("open");
+}
+
+function closeClusterModal() {
+  document.getElementById("cluster-modal").classList.remove("open");
+  document.getElementById("cluster-modal-backdrop").classList.remove("open");
+}
+
+function selectAptFromCluster(id) {
+  closeClusterModal();
+  selectApt(id);
+}
+
+// ── Notifications / Alerts ─────────────────────────────────────────────────────
+let computedAlerts = [];
+
+function computeAlerts(apts) {
+  const currentUser = getCurrentUser();
+  const lastSeen = JSON.parse(localStorage.getItem("apt_notifications_seen") || "null");
+  const isFirstLoad = !lastSeen;
+  const alerts = [];
+
+  apts.forEach(apt => {
+    const ratings = apt.user_ratings || {};
+    Object.entries(ratings).forEach(([user, rating]) => {
+      if (user === currentUser) return;
+      const prev = lastSeen?.[user]?.[apt.id];
+      const cat = rating.list_category;
+      if (cat && cat !== "unsorted") {
+        const isNew = !isFirstLoad && (!prev || prev.list_category !== cat);
+        alerts.push({ user, aptId: apt.id, address: apt.address, type: "vote", value: cat, unread: isNew });
+      }
+      const note = (rating.notes || "").trim();
+      if (note) {
+        const isNew = !isFirstLoad && (!prev || prev.notes !== note);
+        alerts.push({ user, aptId: apt.id, address: apt.address, type: "note", value: note, unread: isNew });
+      }
+    });
+  });
+
+  alerts.sort((a, b) => (b.unread ? 1 : 0) - (a.unread ? 1 : 0));
+
+  // On first load, snapshot the current state so future changes register as new
+  if (isFirstLoad) markAlertsSeen(apts, true);
+
+  return alerts;
+}
+
+function renderAlerts() {
+  const list = document.getElementById("alerts-list");
+  if (!list) return;
+  if (!computedAlerts.length) {
+    list.innerHTML = '<div class="alert-empty">No activity from the group yet</div>';
+    return;
+  }
+  const catLabels = {
+    yes:   `<span style="color:var(--green);font-weight:700">Yes</span>`,
+    maybe: `<span style="color:var(--amber);font-weight:700">Maybe</span>`,
+    no:    `<span style="color:var(--red);font-weight:700">No</span>`,
+  };
+  list.innerHTML = computedAlerts.map(a => {
+    const u = USER_CONFIG[a.user];
+    if (!u) return "";
+    const aptTitle = (getNickname(a.aptId) || a.address).replace(/</g, "&lt;");
+    let text = "";
+    if (a.type === "vote") {
+      text = `voted ${catLabels[a.value] || a.value}`;
+    } else {
+      const preview = a.value.length > 52 ? a.value.slice(0, 52) + "…" : a.value;
+      text = `left a note: <em style="color:var(--muted)">"${preview.replace(/</g, "&lt;")}"</em>`;
+    }
+    return `<div class="alert-item${a.unread ? " unread" : ""}" onclick="selectApt(${a.aptId}); closeAlertsMenu();">
+      <div class="alert-avatar" style="background:${u.color}">${u.initial}</div>
+      <div class="alert-body">
+        <div class="alert-text"><strong>${u.name}</strong> ${text}</div>
+        <div class="alert-apt">${aptTitle}</div>
+      </div>
+      ${a.unread ? '<div class="alert-unread-dot"></div>' : ""}
+    </div>`;
+  }).join("");
+}
+
+function updateAlertsBadge() {
+  const badge = document.getElementById("alerts-badge");
+  if (!badge) return;
+  const count = computedAlerts.filter(a => a.unread).length;
+  badge.textContent = count > 9 ? "9+" : String(count);
+  badge.style.display = count > 0 ? "" : "none";
+}
+
+function markAlertsSeen(apts, silent) {
+  const currentUser = getCurrentUser();
+  const snapshot = {};
+  apts.forEach(apt => {
+    const ratings = apt.user_ratings || {};
+    Object.entries(ratings).forEach(([user, rating]) => {
+      if (user === currentUser) return;
+      if (!snapshot[user]) snapshot[user] = {};
+      snapshot[user][apt.id] = { list_category: rating.list_category, notes: rating.notes };
+    });
+  });
+  localStorage.setItem("apt_notifications_seen", JSON.stringify(snapshot));
+  if (!silent) {
+    computedAlerts.forEach(a => { a.unread = false; });
+    updateAlertsBadge();
+  }
+}
+
+function toggleAlertsMenu(e) {
+  if (e) e.stopPropagation();
+  const drop = document.getElementById("alerts-drop");
+  const btn  = document.getElementById("alerts-btn");
+  const shouldOpen = !drop.classList.contains("open");
+  closeAlertsMenu();
+  closeSettingsMenu();
+  closeProfileMenu();
+  if (shouldOpen) {
+    drop.classList.add("open");
+    btn.classList.add("active");
+    markAlertsSeen(allApts);
+    renderAlerts();
+  }
+}
+
+function closeAlertsMenu() {
+  document.getElementById("alerts-drop")?.classList.remove("open");
+  document.getElementById("alerts-btn")?.classList.remove("active");
+}
+
+document.getElementById("alerts-drop")?.addEventListener("click", e => e.stopPropagation());
+
+document.addEventListener("click", function(e) {
+  const drop = document.getElementById("alerts-drop");
+  const btn  = document.getElementById("alerts-btn");
+  if (!drop?.contains(e.target) && !btn?.contains(e.target)) closeAlertsMenu();
+});
+
+// ── Settings menu ─────────────────────────────────────────────────────────────
+function toggleSettingsMenu(e) {
+  if (e) e.stopPropagation();
+  const drop = document.getElementById("settings-drop");
+  const btn  = document.getElementById("settings-btn");
+  const shouldOpen = !drop.classList.contains("open");
+  closeSettingsMenu();
+  closeProfileMenu();
+  closeAlertsMenu();
+  if (shouldOpen) {
+    drop.classList.add("open");
+    btn.classList.add("active");
+  }
+}
+
+function closeSettingsMenu() {
+  document.getElementById("settings-drop")?.classList.remove("open");
+  document.getElementById("settings-btn")?.classList.remove("active");
+}
+
+document.getElementById("settings-drop")?.addEventListener("click", e => e.stopPropagation());
+
+document.addEventListener("click", function(e) {
+  const drop = document.getElementById("settings-drop");
+  const btn  = document.getElementById("settings-btn");
+  if (!drop?.contains(e.target) && !btn?.contains(e.target)) closeSettingsMenu();
 });
 
 // ── Boundary toggle ───────────────────────────────────────────────────────────
@@ -1537,7 +2394,12 @@ function obSelectUser(user) {
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 updateUserIndicator();
+bindProfileMenuTrigger();
 updatePriceModeDisplay();
+updateMbtaOverlayToggle();
+updateDisplayNicknamesToggle();
+updateAlertsBadge();
+syncMbtaOverlay();
 load();
 // Show onboarding on first visit; it handles identity selection internally.
 // Fall back to the user modal only if they skipped identity during onboarding.
