@@ -345,6 +345,27 @@
         <strong>Next:</strong> Once your boundary is saved, you'll run the scraper to pull listings from Metro Realty. Only apartments whose addresses fall <em>inside</em> this polygon will be shown to your group.
       </div>
     </div>
+
+    <!-- Danger zone -->
+    <div class="section" style="border-top: 1px solid rgba(239,68,68,0.2); padding-top: 16px;">
+      <div class="section-title" style="color: var(--danger);">Danger Zone</div>
+
+      <button class="btn btn-danger" id="wipe-user-btn" style="width:100%; justify-content:center; margin-bottom:6px;">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Wipe My Votes &amp; Notes
+      </button>
+      <div style="font-size:10.5px; color:var(--muted); margin-bottom:14px; line-height:1.5;">
+        Removes only your own votes and notes. Other users' data is untouched.
+      </div>
+
+      <button class="btn btn-danger" id="wipe-all-btn" style="width:100%; justify-content:center;">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        Wipe ALL User Data
+      </button>
+      <div style="font-size:10.5px; color:var(--muted); margin-top:6px; line-height:1.5;">
+        Permanently deletes every vote and note from all three users.
+      </div>
+    </div>
   </aside>
 
   <!-- ── Map ── -->
@@ -546,6 +567,41 @@
   window.addEventListener("beforeunload", function (e) {
     if (isDirty) { e.preventDefault(); e.returnValue = ""; }
   });
+
+  // ── Danger zone ──
+  function showToast(msg, type) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className = type === "error" ? "error show" : "show";
+    clearTimeout(t._t);
+    t._t = setTimeout(() => t.className = "", 3000);
+  }
+
+  async function doWipe(user) {
+    const label = user ? `your (${user}) votes & notes` : "ALL user data";
+    if (!confirm(`This will permanently delete ${label}. Are you sure?`)) return;
+    const body = user ? JSON.stringify({ user }) : "{}";
+    const res = await fetch("/api/ratings/reset", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body,
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`Done — deleted ${data.deleted} rating${data.deleted !== 1 ? "s" : ""}.`, "ok");
+    } else {
+      showToast("Something went wrong.", "error");
+    }
+  }
+
+  document.getElementById("wipe-user-btn").addEventListener("click", function () {
+    const user = localStorage.getItem("apartment_user");
+    if (!user) {
+      alert("You haven't selected who you are yet. Open the main app and pick your identity first.");
+      return;
+    }
+    doWipe(user);
+  });
+
+  document.getElementById("wipe-all-btn").addEventListener("click", () => doWipe(null));
 </script>
 </body>
 </html>

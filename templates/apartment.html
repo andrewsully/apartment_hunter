@@ -64,6 +64,13 @@
     .nav-sub .badge-in   { color: var(--accent); }
     .nav-sub .badge-out  { color: var(--muted); }
     .nav-arrows { display: flex; gap: 6px; flex-shrink: 0; }
+    .chip {
+      padding: 5px 12px; border-radius: 99px; font-size: 12px; font-weight: 600;
+      cursor: pointer; border: 1px solid var(--border);
+      background: var(--surf2); color: var(--muted);
+      transition: all 0.15s; white-space: nowrap; font-family: inherit;
+    }
+    .chip.active { background: rgba(99,102,241,0.15); border-color: var(--accent); color: var(--accent); }
     .nav-arrow {
       display: flex; align-items: center; gap: 4px;
       text-decoration: none; font-size: 12px; font-weight: 600;
@@ -293,6 +300,31 @@
     /* Section divider */
     .divider { height: 1px; background: var(--border); }
 
+    /* ── Notes chat thread ── */
+    .notes-thread { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+    .note-bubble { display: flex; gap: 8px; align-items: flex-start; }
+    .note-bubble.own { flex-direction: row-reverse; }
+    .note-avatar {
+      width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 800; color: #fff; margin-top: 2px;
+    }
+    .note-content { max-width: 82%; display: flex; flex-direction: column; gap: 3px; }
+    .note-bubble.own .note-content { align-items: flex-end; }
+    .note-who { font-size: 11px; font-weight: 600; color: var(--muted); padding: 0 3px; }
+    .note-text {
+      background: var(--surf2); border: 1px solid var(--border);
+      border-radius: 3px 12px 12px 12px;
+      padding: 9px 13px; font-size: 13px; line-height: 1.55;
+      color: var(--text); word-break: break-word;
+    }
+    .note-bubble.own .note-text {
+      background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.25);
+      border-radius: 12px 3px 12px 12px;
+    }
+    .note-empty { font-size: 12px; color: var(--muted); font-style: italic; padding: 3px 3px; }
+    .notes-input-label { font-size: 10.5px; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+
     /* ── User identity button ── */
     .user-btn {
       display: flex; align-items: center; gap: 7px;
@@ -425,6 +457,41 @@
       #detail-left { border-right: none; border-bottom: 1px solid var(--border); }
       #detail-right { overflow-y: visible; }
     }
+
+    @media (max-width: 767px) {
+      html, body { overflow-y: auto; height: auto; }
+
+      /* Compact topnav */
+      #topnav { padding: 0 10px; gap: 8px; }
+      .nav-back { padding: 6px 8px; font-size: 12px; }
+      .nav-addr { font-size: 12px; }
+      .nav-sub  { display: none; }
+      .nav-arrow { padding: 5px 8px; font-size: 11px; }
+      #user-indicator { flex-shrink: 0; }
+
+      /* Gallery: use aspect ratio instead of fixed height columns */
+      #gallery-stage { aspect-ratio: 4 / 3; }
+      #mini-map { height: 160px; }
+
+      /* Single column always on mobile */
+      #main { grid-template-columns: 1fr; min-height: auto; }
+      #detail-left { padding: 16px; }
+      #detail-right { padding: 20px 16px 40px; overflow-y: visible; }
+
+      /* Stat pills full row */
+      .stat-pills { gap: 6px; }
+      .stat-pill { min-width: 0; padding: 8px 10px; }
+
+      /* Bigger vote buttons */
+      .vote-btn { padding: 12px 6px; font-size: 14px; }
+
+      /* Roommates row stacks better */
+      .roommates-row { gap: 6px; }
+      .roommate-slot { padding: 8px 6px; }
+
+      /* Safe area for bottom */
+      #detail-right { padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
+    }
   </style>
 </head>
 <body>
@@ -452,6 +519,7 @@
       <a href="/apartment/{{ next_id }}" class="nav-arrow">Next ›</a>
     {% endif %}
   </div>
+  <button class="chip" id="price-mode-btn" onclick="togglePriceMode()" style="flex-shrink:0;">$ total</button>
   <div id="user-indicator" style="flex-shrink:0;"></div>
 </header>
 
@@ -506,8 +574,8 @@
     <!-- Rent + address -->
     <div class="rent-block">
       <div>
-        <span class="rent-amount">${{ "{:,}".format(apt.rent or 0) }}</span>
-        <span class="rent-per">/mo</span>
+        <span class="rent-amount" id="rent-amount">${{ "{:,}".format(apt.rent or 0) }}</span>
+        <span class="rent-per" id="rent-per">/mo</span>
       </div>
       <div class="rent-address">{{ apt.address }}</div>
       {% if apt.neighborhood %}
@@ -540,6 +608,14 @@
       {% if apt.pet_friendly %}<span class="badge badge-green" style="margin-left:4px;">Pets OK</span>{% endif %}
     </div>
 
+    {% if apt.available_to %}
+    <!-- Move-out / lease end -->
+    <div class="info-row">
+      <span class="icon">🗓</span>
+      <span><span class="label">Lease end</span> <strong>{{ apt.available_to }}</strong></span>
+    </div>
+    {% endif %}
+
     <!-- Boundary row -->
     <div class="info-row">
       <span class="icon">📍</span>
@@ -549,6 +625,24 @@
         <span class="badge badge-accent">In your area</span>
       {% else %}
         <span class="badge badge-muted">Outside area</span>
+      {% endif %}
+    </div>
+
+    <!-- Quick details chips -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      {% if apt.no_fee %}
+        <span class="badge badge-green">✓ No Fee</span>
+      {% endif %}
+      {% if apt.pet_friendly %}
+        <span class="badge badge-green">🐾 Pets OK</span>
+      {% endif %}
+      {% if apt.zip_code %}
+        <span class="badge badge-muted">📮 {{ apt.zip_code }}</span>
+      {% endif %}
+      {% if apt.source_id %}
+        <span class="badge badge-muted" title="Metro Realty listing #">
+          # {{ apt.source_id.split('-')[-1] if '-' in apt.source_id else apt.source_id }}
+        </span>
       {% endif %}
     </div>
 
@@ -591,12 +685,19 @@
 
     <div class="divider"></div>
 
-    <!-- Notes -->
+    <!-- Group notes chat thread -->
     <div class="section">
       <div class="section-title">Group Notes</div>
-      <textarea id="notes-ta" placeholder="Add notes visible to everyone…"></textarea>
+      <div class="notes-thread" id="apt-notes-thread"></div>
+
+      <div style="height:1px;background:var(--border);margin:8px 0;"></div>
+      <div class="notes-input-label" id="notes-input-label">Your note</div>
+      <div id="vote-no-notes-hint" style="font-size:11px;color:var(--muted);font-style:italic;margin-bottom:6px;cursor:pointer;display:none;" onclick="openUserModal()">
+        👤 Select who you are to add a note
+      </div>
+      <textarea id="notes-ta" placeholder="Write something the group can see…"></textarea>
       <div class="notes-footer">
-        <button id="notes-save-btn">Save Notes</button>
+        <button id="notes-save-btn">Save</button>
         <span id="notes-feedback">Saved ✓</span>
       </div>
     </div>
@@ -680,8 +781,7 @@ function selectUser(user) {
   localStorage.setItem("apartment_user", user);
   closeUserModal();
   updateUserIndicator();
-  updateVoteButtons(currentCategory);
-  refreshRoommateVotes();
+  updateVoteButtons();
 }
 
 function updateUserIndicator() {
@@ -721,9 +821,15 @@ function showPhoto(idx) {
   document.querySelectorAll(".thumb-img").forEach((t, i) =>
     t.classList.toggle("active", i === currentPhoto));
 
-  // Scroll active thumb into view
-  const active = document.querySelector(".thumb-img.active");
-  if (active) active.scrollIntoView({ inline: "nearest", behavior: "smooth" });
+  // Scroll active thumb horizontally within its container — never scroll the page
+  const thumbsEl = document.getElementById("gallery-thumbs");
+  const active   = thumbsEl?.querySelector(".thumb-img.active");
+  if (active && thumbsEl) {
+    const cl = thumbsEl.scrollLeft, cw = thumbsEl.clientWidth;
+    const tl = active.offsetLeft, tw = active.offsetWidth;
+    if (tl < cl) thumbsEl.scrollLeft = tl - 8;
+    else if (tl + tw > cl + cw) thumbsEl.scrollLeft = tl + tw - cw + 8;
+  }
 
   // Counter
   const counter = document.getElementById("g-counter");
@@ -819,6 +925,49 @@ if (APT.latitude && APT.longitude) {
 }
 
 // ── Voting ────────────────────────────────────────────────────────────────────
+const USERS_LIST = [
+  { key: "andrew", name: "Andrew", initial: "A", color: "#6366f1" },
+  { key: "liam",   name: "Liam",   initial: "L", color: "#22d3ee" },
+  { key: "joe",    name: "Joe",    initial: "J", color: "#f59e0b" },
+];
+
+function renderNotesThread() {
+  const user = getCurrentUser();
+  const container = document.getElementById("apt-notes-thread");
+  if (!container) return;
+  container.innerHTML = USERS_LIST.map(u => {
+    const note = (localRatings[u.key]?.notes || "").trim();
+    const isOwn = u.key === user;
+    const avatarHtml = `<div class="note-avatar" style="background:${u.color}">${u.initial}</div>`;
+    const nameLabel  = u.name + (isOwn ? " · you" : "");
+    const bodyHtml   = note
+      ? `<div class="note-text">${note.replace(/</g, "&lt;").replace(/\n/g, "<br>")}</div>`
+      : `<div class="note-empty">No note yet</div>`;
+    return `<div class="note-bubble${isOwn ? " own" : ""}">
+      ${!isOwn ? avatarHtml : ""}
+      <div class="note-content">
+        <div class="note-who">${nameLabel}</div>${bodyHtml}
+      </div>
+      ${isOwn ? avatarHtml : ""}
+    </div>`;
+  }).join("");
+
+  // Update the "Your note" label + hint visibility
+  const label = document.getElementById("notes-input-label");
+  const hint  = document.getElementById("vote-no-notes-hint");
+  if (label) label.textContent = user ? `Your note (${USER_CONFIG[user]?.name || "you"})` : "Your note";
+  if (hint)  hint.style.display = user ? "none" : "";
+
+  const ta  = document.getElementById("notes-ta");
+  const btn = document.getElementById("notes-save-btn");
+  if (ta) {
+    ta.value    = (user && localRatings[user]?.notes) || "";
+    ta.disabled = !user;
+    ta.style.opacity = user ? "" : "0.4";
+  }
+  if (btn) { btn.disabled = !user; btn.style.opacity = user ? "" : "0.4"; }
+}
+
 const VOTE_LABELS = { yes: "✓ Yes", maybe: "? Maybe", no: "✗ No", unsorted: "—" };
 const VOTE_COLORS = { yes: "var(--green)", maybe: "var(--amber)", no: "var(--red)", unsorted: "var(--muted)" };
 
@@ -845,32 +994,22 @@ function updateVoteButtons() {
     btn.style.cursor  = user ? "" : "not-allowed";
   });
 
-  // Notes
-  const ta = document.getElementById("notes-ta");
-  const saveBtn = document.getElementById("notes-save-btn");
-  const userNotes = (user && localRatings[user]?.notes) || "";
-  ta.value = userNotes;
-  ta.disabled = !user;
-  ta.style.opacity = user ? "" : "0.4";
-  saveBtn.disabled = !user;
-  saveBtn.style.opacity = user ? "" : "0.4";
-
-  // No-user hint
+  // No-user vote hint
   const hint = document.getElementById("vote-no-user-hint");
   if (hint) hint.style.display = user ? "none" : "";
 
-  refreshRoommateVotes();
-}
-
-function refreshRoommateVotes() {
+  // Group votes summary
   Object.keys(USER_CONFIG).forEach(u => {
     const el = document.getElementById(`rmvote-${u}`);
     if (!el) return;
     const cat = localRatings[u]?.list_category || "unsorted";
     el.textContent = VOTE_LABELS[cat] || "—";
-    el.style.color  = VOTE_COLORS[cat] || "var(--muted)";
+    el.style.color = VOTE_COLORS[cat] || "var(--muted)";
     el.style.fontStyle = cat === "unsorted" ? "italic" : "normal";
   });
+
+  // Notes thread
+  renderNotesThread();
 }
 
 updateVoteButtons();
@@ -904,6 +1043,7 @@ document.getElementById("notes-save-btn").addEventListener("click", async () => 
   });
   if (!localRatings[user]) localRatings[user] = {};
   localRatings[user].notes = notes;
+  renderNotesThread();
   const fb = document.getElementById("notes-feedback");
   fb.classList.add("show");
   setTimeout(() => fb.classList.remove("show"), 2000);
@@ -918,8 +1058,31 @@ function toast(msg) {
   t._t = setTimeout(() => t.classList.remove("show"), 2200);
 }
 
+// ── Price mode ────────────────────────────────────────────────────────────────
+const APT_RENT = {{ apt.rent or 0 }};
+let priceMode = localStorage.getItem("apartment_price_mode") || "total";
+
+function applyPriceMode() {
+  const val = priceMode === "per_person" ? Math.round(APT_RENT / 3) : APT_RENT;
+  const el = document.getElementById("rent-amount");
+  const perEl = document.getElementById("rent-per");
+  if (el) el.textContent = "$" + val.toLocaleString();
+  if (perEl) perEl.textContent = priceMode === "per_person" ? "/ person" : "/mo";
+  const btn = document.getElementById("price-mode-btn");
+  if (btn) {
+    btn.textContent = priceMode === "per_person" ? "÷3 / person" : "$ total";
+    btn.classList.toggle("active", priceMode === "per_person");
+  }
+}
+function togglePriceMode() {
+  priceMode = priceMode === "total" ? "per_person" : "total";
+  localStorage.setItem("apartment_price_mode", priceMode);
+  applyPriceMode();
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 updateUserIndicator();
+applyPriceMode();
 if (!getCurrentUser()) {
   setTimeout(() => openUserModal(), 600);
 }

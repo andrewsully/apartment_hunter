@@ -47,6 +47,18 @@ def index():
     )
 
 
+@app.route("/compare")
+def compare():
+    """Group comparison page — all apartments with all users' votes."""
+    boundary = load_boundary()
+    apartments = Apartment.query.filter_by(active=True).all()
+    return render_template(
+        "compare.html",
+        apartments=json.dumps([a.to_dict() for a in apartments]),
+        boundary=json.dumps(boundary),
+    )
+
+
 @app.route("/apartment/<int:apt_id>")
 def apartment_detail(apt_id):
     """Full detail page for a single apartment."""
@@ -164,6 +176,31 @@ def trigger_scrape():
     except Exception as e:
         logger.error("Scrape failed: %s", e)
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/ratings/reset", methods=["POST"])
+def reset_all_ratings():
+    """Wipe every UserRating row and reset legacy fields on all apartments."""
+    data = request.get_json(silent=True) or {}
+    user = data.get("user", "").lower().strip()
+
+    if user and user in VALID_USERS:
+        # Clear a single user's ratings
+        deleted = UserRating.query.filter_by(user=user).delete()
+        if user == "andrew":
+            for apt in Apartment.query.all():
+                apt.list_category = "unsorted"
+                apt.notes = ""
+    else:
+        # Wipe everyone
+        deleted = UserRating.query.delete()
+        for apt in Apartment.query.all():
+            apt.list_category = "unsorted"
+            apt.notes = ""
+
+    db.session.commit()
+    logger.info("Ratings reset: user=%r rows_deleted=%d", user or "all", deleted)
+    return jsonify({"success": True, "deleted": deleted})
 
 
 @app.route("/api/scrape/status", methods=["GET"])
